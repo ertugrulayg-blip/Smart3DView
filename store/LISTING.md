@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.10.1-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.10.2-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -59,7 +59,7 @@ Every feature is available for 14 days. After the trial, grayscale 3D viewing re
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.10.1
+- Version Number: 1.10.2
 - Version Description: Initial release — supports Revit 2025, 2026 and 2027. Includes reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, discipline filter and properties panel, view cube, live size tags and two-color clash display.
 
 ## Commands (Add Commands)
