@@ -215,6 +215,21 @@ sealed partial class ViewerWindow
         }
         _side.Background = new SolidColorBrush(dark ? Color.FromRgb(0x24, 0x24, 0x24) : Color.FromRgb(0xF6, 0xF6, 0xF5));
         _side.BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(0x30, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x24, 0, 0, 0));
-        foreach (var c in _filterList.Children) if (c is CheckBox cb) cb.Foreground = new SolidColorBrush(ink);
+        Recolor(_side.Child, new SolidColorBrush(ink));
+    }
+
+    /// <summary>Paneldeki tüm yazılar (başlıklar, disiplin satırları, özellikler) yeni tona göre — butonlar sistem stilinde kalır.</summary>
+    static void Recolor(object? o, Brush ink)
+    {
+        switch (o)
+        {
+            case Button: return;
+            case TextBlock tb: tb.Foreground = ink; return;
+            case TextBox tx: tx.Foreground = ink; return;
+            case CheckBox cb: cb.Foreground = ink; return;
+            case Panel p: foreach (var c in p.Children) Recolor(c, ink); return;
+            case Decorator d: Recolor(d.Child, ink); return;
+            case ContentControl cc: Recolor(cc.Content, ink); return;
+        }
     }
 }
