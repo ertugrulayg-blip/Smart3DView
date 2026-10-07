@@ -13,7 +13,7 @@ Hello, and welcome to the Smart3DView tutorial. In the next few minutes, I'll sh
 Working in a busy Revit model? Smart3DView opens just the area you need in a fast, clean 3D window. Keep it on a second screen while you model.
 
 **2 — Açma** [Eleman seç → Add-Ins → Smart 3D View; sonra planda dikdörtgen sürükle]
-Select a few elements. Forget the classic section box and the chaos inside it — no more hiding, cropping and searching through clutter. Just click Smart 3D View. The area around them opens in seconds. You can also open the section box of a 3D view, or drag a rectangle in a plan view. Linked models are included.
+Select a few elements. Forget the classic section box and the chaos inside it — no more hiding, cropping and searching through clutter. Just click Smart 3D View. The area around them opens in seconds. You can also drag a rectangle in a plan view. Linked models are included.
 
 **3 — Gezinme ve tonlar** [Döndür, kaydır, yakınlaştır; 1–7 tuşlarıyla tonları değiştir]
 Navigate just like in Revit. Then pick a tone: white, gray, dark, or paper. No materials, no clutter — just clear shapes and solid cuts.
