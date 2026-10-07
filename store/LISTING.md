@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>.zip` (`tools\make-bundle.ps1` üretir; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.10.1-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -29,7 +29,16 @@ White, Light gray, Gray, Dark, Black and Paper (hidden-line look) — switch wit
 The building stays gray while services are colored: chilled/cooling water pipes and their insulation blue, fire protection red, supply air ducts magenta, return and exhaust ducts green. Systems are recognized from Revit system classifications and system names.
 
 **Clash detection between services**
-One click turns touching or overlapping elements of different services red — cooling vs. ducts, ducts vs. fire protection, cable trays vs. mechanical, MEP vs. beams and columns. Parts of the same run (a pipe and its own elbow or coupling), elements connected through connectors and a pipe with its own insulation are not reported. Click a red element to see what it clashes with. Works across linked models.
+One click highlights touching or overlapping elements of different services in two colors — one side red, the other blue — so you can see at a glance which is which: cooling vs. ducts, ducts vs. fire protection, cable trays vs. mechanical, MEP vs. beams and columns. Parts of the same run (a pipe and its own elbow or coupling), elements connected through connectors and a pipe with its own insulation are not reported. Click a clashing element to see what it clashes with. Hidden categories are skipped. Works across linked models.
+
+**3D measuring with snapping**
+Measure point to point in 3D. The cursor snaps to corners, edge midpoints, edges and pipe/duct centerlines, with AutoCAD-style markers (X, circle, parallel lines). Lock the measurement to the X, Y or Z axis; results use the project's length units.
+
+**Filter and properties panel**
+Turn categories on and off, grouped as Architecture, Structure, Mechanical and Electrical — switch a whole discipline or expand it for single categories. Click an element to see its parameters and select it in Revit with one click.
+
+**View cube, live tags, reload and multiple windows**
+A view cube in the corner gives exact top, front, side and corner views. Tag mode shows sizes (e.g. 300x100, Ø50) as you hover. Reload (R / F5) brings in changes made in Revit while keeping the camera, box, tone and clash results. Each click on the ribbon button opens a new window, so you can keep several 3D areas open at once.
 
 **Live section box**
 Drag the face handles to shrink or grow the box, or move the whole box along an axis. Cutting happens on the graphics card, so changes are instant.
@@ -44,14 +53,14 @@ Geometry is uploaded to the GPU once; navigation stays smooth even on integrated
 Shift + middle mouse to orbit (around the selected element), middle mouse to pan, wheel to zoom towards the cursor, double-click or F to fit.
 
 **Trial and license**
-Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored mode, Clash detection, Take picture and Box editing.
+Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored mode, Clash detection, 3D measuring, Take picture and Box editing.
 
 ## Publisher Privacy Policy
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.7.0
-- Version Description: Initial release — supports Revit 2025, 2026 and 2027.
+- Version Number: 1.10.1
+- Version Description: Initial release — supports Revit 2025, 2026 and 2027. Includes reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, discipline filter and properties panel, view cube, live size tags and two-color clash display.
 
 ## Commands (Add Commands)
 - Command: **Smart 3D View** — Ribbon: Add-Ins tab → Smart3DView panel.
@@ -63,9 +72,12 @@ https://schema-tools.net/privacy-policy.html
 3. Navigate: Shift + middle mouse to orbit, middle mouse to pan, wheel to zoom, double-click or F to fit. Left click selects an element and shows its category, type and ID.
 4. Choose a tone at the bottom right (keys 1–7). Colored mode colors cooling, fire protection, supply and return/exhaust systems.
 5. Box (B): drag the blue handles to move faces; Move (M) or Ctrl + drag slides the whole box. Areas beyond the loaded region are read from Revit when you release the mouse.
-6. Clash (C): elements clashing with a different service turn red; click one to see its partner.
-7. Take picture (P): the view is saved into the model under Project Browser → Renderings.
-8. Help: F1 or the ? button. The license window opens from the Trial / Free version button.
+6. Clash (C): elements clashing with a different service turn red and blue; click one to see its partner.
+7. Measure (D): click two points; the cursor snaps to corners, midpoints and edges. X / Y / Z lock the axis, Free releases it, Delete clears all measurements.
+8. Panel: the side panel lists categories by discipline (Architecture, Structure, Mechanical, Electrical) to show or hide, and the parameters of the selected element. Tag (T) shows sizes on hover; the view cube at the top right sets exact views.
+9. Reload (R / F5) reads changes from Revit and keeps your view. Clicking Smart 3D View again opens another window.
+10. Take picture (P): the view is saved into the model under Project Browser → Renderings.
+11. Help: F1 or the ? button. The license window opens from the Trial / Free version button.
 
 ## Installation/Uninstallation
 The installer copies Smart3DView to the ApplicationPlugins folder (%APPDATA%\Autodesk\ApplicationPlugins\Smart3DView.bundle). Restart Revit after installing; the Smart3DView panel appears on the Add-Ins tab. No other setup is needed — the 14-day trial starts on first use.
@@ -79,7 +91,7 @@ Support: schematoolssupp@outlook.com or https://schema-tools.net/contact.html. W
 - Requires a graphics card with OpenGL 3.3 (any GPU from the last decade, including integrated graphics).
 - User interface in English and Turkish (follows the Windows language).
 - Privacy: everything runs on your computer; the model is never uploaded. License activation and an approximately weekly check contact Polar (api.polar.sh) with the license key and an anonymous device code only.
-- Pictures are also kept as PNG files in %LOCALAPPDATA%Smart3DViewimages.
+- Pictures are also kept as PNG files in %LOCALAPPDATA%\Smart3DView\images.
 - Quick start and help: https://schema-tools.net/smart3dview/help/
 
 ## Known Issues
@@ -93,7 +105,8 @@ https://schema-tools.net/smart3dview/
 ## Ekran görüntüleri (gerçek Revit modelinden, ≤ 2 MB)
 1. Gri tonlarda bir bina bölümü (Açık gri ya da Beyaz), kesit poşesi görünür.
 2. Renkli mod: soğutma (mavi), yangın (kırmızı), üfleme (magenta), dönüş (yeşil) bir arada.
-3. Çakışma: kırmızı elemanlar + alt çubukta "clashes with …" yazısı.
+3. Çakışma: kırmızı/mavi elemanlar + alt çubukta "clashes with …" yazısı.
+3b. Ölçü: yakalama işaretiyle bir 3B ölçü; yan panelde disiplin filtresi açık.
 4. Kutu düzenleme: mavi tutamaçlar görünür.
 5. Revit Proje Tarayıcısı → Renderings altında kaydedilmiş Smart3DView görüntüsü.
 6. (İsteğe bağlı) Siyah ya da Kağıt tonu.
