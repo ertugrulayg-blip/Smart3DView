@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart3DView Intro</title>
+<style>
+  :root { --bg:#0b1220; --fg:#e5e7eb; --muted:#94a3b8; --btn:#1e3a5f; --btnh:#25507f; --acc:#f59e0b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px "Segoe UI",system-ui,sans-serif;
+         min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:14px; padding:16px; }
+  canvas { width:min(100%, 1280px); aspect-ratio:16/9; border-radius:8px; box-shadow:0 10px 40px #0008; background:#000; }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; }
+  button { background:var(--btn); color:#fff; border:0; border-radius:6px; padding:9px 16px; font:inherit; cursor:pointer; }
+  button:hover { background:var(--btnh); }
+  button.rec { background:#b91c1c; } button.rec:hover { background:#dc2626; }
+  button:disabled { opacity:.5; cursor:default; }
+  label { color:var(--muted); display:flex; gap:6px; align-items:center; }
+  #status { color:var(--muted); min-height:1.3em; text-align:center; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div class="bar">
+  <button id="play">▶ Oynat</button>
+  <button id="rec" class="rec">● Kaydet ve indir (1080p)</button>
+  <label><input type="checkbox" id="fade" checked> Sonda siyaha geçiş</label>
+</div>
+<div id="status">Kayıt gerçek zamanlı yapılır (~6 sn). Kayıt sırasında bu sekmeyi açık tut.</div>
+
+<script>
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const W = 1920, H = 1080, DUR = 6.0;
+
+// ---- yardımcılar ----
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const easeBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+
+// Logo geometrisi (ikonun 512'lik koordinatları, merkez 256,256)
+const HEX = [[256,60],[436,152],[436,360],[256,452],[76,360],[76,152]];
+const TOP = [[256,128],[366,188],[256,245],[147,188]];
+const LEFT = [[147,188],[256,245],[256,375],[147,316]];
+const RIGHT = [[256,245],[366,188],[366,316],[256,375]];
+const DOT = [436,152];
+
+// Arka plan parçacıkları (sabit tohum → her oynatmada aynı)
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const DOTS = Array.from({ length: 70 }, () => ({ x: rnd() * W, y: rnd() * H, r: 1 + rnd() * 2.5, s: 8 + rnd() * 22, a: .15 + rnd() * .35 }));
+
+function poly(pts) { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); }
+
+// Kesikli altıgeni p (0..1) oranında çiz — kesikler yol boyunca kesintisiz devam eder
+function hexPartial(p) {
+  const pts = [...HEX, HEX[0]];
+  let total = 0; for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i-1][0], pts[i][1] - pts[i-1][1]);
+  let left = total * p;
+  g.beginPath(); g.moveTo(...pts[0]);
+  for (let i = 1; i < pts.length && left > 0; i++) {
+    const [x0, y0] = pts[i-1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0);
+    if (left >= L) { g.lineTo(x1, y1); left -= L; }
+    else { const k = left / L; g.lineTo(x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); left = 0; }
+  }
+  g.stroke();
+}
+
+function background(t) {
+  const gr = g.createLinearGradient(0, 0, W, H);
+  gr.addColorStop(0, '#0c1830'); gr.addColorStop(1, '#173f72');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  // logo arkasında yumuşak parıltı
+  const pulse = .5 + .5 * Math.sin(t * 2.2);
+  const rg = g.createRadialGradient(W/2, 400, 0, W/2, 400, 520);
+  rg.addColorStop(0, `rgba(80,140,220,${.22 + .08 * pulse * seg(t, .5, 1.5)})`); rg.addColorStop(1, 'rgba(80,140,220,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  // süzülen noktalar
+  for (const d of DOTS) {
+    const y = (d.y - t * d.s + H) % H;
+    g.fillStyle = `rgba(170,200,240,${d.a * seg(t, 0, .8)})`;
+    g.beginPath(); g.arc(d.x, y, d.r, 0, 7); g.fill();
+  }
+}
+
+function logo(t) {
+  const S = .9;                           // 512 → ~460 px
+  g.save(); g.translate(W/2, 400); g.scale(S, S); g.translate(-256, -256);
+
+  // 1) kesikli altıgen kendini çizer
+  const ph = easeInOut(seg(t, .25, 1.45));
+  if (ph > 0) {
+    g.save(); g.lineWidth = 11; g.lineCap = 'butt'; g.setLineDash([24, 18]);
+    g.strokeStyle = 'rgba(150,180,225,.6)'; hexPartial(ph); g.restore();
+    // altıgenin ortasındaki dikey kesikli çizgi (ikondaki gibi)
+    const pv = seg(t, 1.1, 1.5);
+    if (pv > 0) { g.save(); g.lineWidth = 11; g.setLineDash([24, 18]); g.strokeStyle = 'rgba(150,180,225,.6)';
+      g.beginPath(); g.moveTo(256, 375); g.lineTo(256, 375 + (452 - 375) * pv); g.stroke(); g.restore(); }
+  }
+
+  // 2) küp yüzleri: aşağıdan yukarı sırayla yerine oturur
+  const faces = [[LEFT, '#b3b3b3', .75], [RIGHT, '#757575', .9], [TOP, '#f1f1f1', 1.05]];
+  for (const [pts, col, t0] of faces) {
+    const p = seg(t, t0, t0 + .55); if (p <= 0) continue;
+    const e = easeBack(p), dy = (1 - easeOut(p)) * 60;
+    g.save(); g.globalAlpha = clamp(p * 2);
+    g.translate(256, 251 + dy); g.scale(e, e); g.translate(-256, -251);
+    poly(pts); g.fillStyle = col; g.fill();
+    g.lineWidth = 14; g.lineJoin = 'round'; g.strokeStyle = '#161a20'; g.stroke();
+    g.restore();
+  }
+
+  // 3) turuncu nokta "pop" eder + bir halka dalgası yayar
+  const pd = seg(t, 1.6, 2.0);
+  if (pd > 0) {
+    const e = easeBack(pd);
+    g.save(); g.translate(...DOT); g.scale(e, e);
+    g.beginPath(); g.arc(0, 0, 38, 0, 7); g.fillStyle = '#fff'; g.fill();
+    g.beginPath(); g.arc(0, 0, 30, 0, 7); g.fillStyle = '#f59e0b'; g.fill();
+    g.restore();
+    const pr = seg(t, 1.75, 2.6);
+    if (pr > 0 && pr < 1) { g.save(); g.globalAlpha = 1 - pr; g.lineWidth = 6; g.strokeStyle = '#f59e0b';
+      g.beginPath(); g.arc(...DOT, 38 + pr * 70, 0, 7); g.stroke(); g.restore(); }
+  }
+  g.restore();
+}
+
+function titles(t) {
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+
+  // "Smart3DView" harf harf yukarı kayarak gelir ("3D" turuncu)
+  const word = 'Smart3DView', y = 790;
+  g.font = '700 128px "Segoe UI", system-ui, sans-serif';
+  const widths = [...word].map(ch => g.measureText(ch).width), tw = widths.reduce((a, b) => a + b, 0);
+  let x = W/2 - tw/2;
+  [...word].forEach((ch, i) => {
+    const p = easeOut(seg(t, 2.0 + i * .05, 2.5 + i * .05));
+    if (p > 0) {
+      g.save(); g.globalAlpha = p; g.textAlign = 'left';
+      g.fillStyle = (i === 5 || i === 6) ? '#f59e0b' : '#ffffff';
+      g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 18; g.shadowOffsetY = 6;
+      g.fillText(ch, x, y + (1 - p) * 50); g.restore();
+    }
+    x += widths[i];
+  });
+
+  // ayırıcı çizgi ortadan dışa açılır
+  const pl = easeInOut(seg(t, 2.75, 3.35));
+  if (pl > 0) { g.save(); g.strokeStyle = 'rgba(148,180,225,.55)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(W/2 - 260 * pl, 845); g.lineTo(W/2 + 260 * pl, 845); g.stroke(); g.restore(); }
+
+  // "SchemaTools" harf aralığı daralarak belirir
+  const ps = easeOut(seg(t, 3.0, 3.8));
+  if (ps > 0) {
+    g.save(); g.globalAlpha = ps; g.fillStyle = '#c7d7ee';
+    g.font = '600 50px "Segoe UI", system-ui, sans-serif';
+    const sp = 14 + (1 - ps) * 30; // harf aralığı (px)
+    const s = 'SchemaTools', ws = [...s].map(ch => g.measureText(ch).width);
+    const total = ws.reduce((a, b) => a + b, 0) + sp * (s.length - 1);
+    let sx = W/2 - total/2; g.textAlign = 'left';
+    [...s].forEach((ch, i) => { g.fillText(ch, sx, 925); sx += ws[i] + sp; });
+    g.restore();
+  }
+
+  // başlığın üzerinden geçen ışık şeridi
+  const pw = seg(t, 3.7, 4.5);
+  if (pw > 0 && pw < 1) {
+    const cx = W/2 - tw/2 - 200 + (tw + 400) * easeInOut(pw);
+    const lg = g.createLinearGradient(cx - 120, 0, cx + 120, 0);
+    lg.addColorStop(0, 'rgba(255,255,255,0)'); lg.addColorStop(.5, 'rgba(255,255,255,.35)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = lg;
+    g.font = '700 128px "Segoe UI", system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(word, W/2, y); g.restore();
+  }
+}
+
+function frame(t) {
+  background(t); logo(t); titles(t);
+  // giriş: siyahtan açılma; çıkış: isteğe bağlı siyaha geçiş
+  const fi = 1 - seg(t, 0, .45), fo = document.getElementById('fade').checked ? seg(t, DUR - .7, DUR) : 0;
+  const a = Math.max(fi, fo);
+  if (a > 0) { g.fillStyle = `rgba(0,0,0,${a})`; g.fillRect(0, 0, W, H); }
+}
+
+// ---- oynatma / kayıt ----
+let raf = 0;
+function run(onEnd) {
+  cancelAnimationFrame(raf);
+  const t0 = performance.now();
+  const step = now => {
+    const t = (now - t0) / 1000;
+    frame(Math.min(t, DUR));
+    if (t < DUR) raf = requestAnimationFrame(step); else onEnd && onEnd();
+  };
+  raf = requestAnimationFrame(step);
+}
+
+const status = document.getElementById('status'), btnPlay = document.getElementById('play'), btnRec = document.getElementById('rec');
+btnPlay.onclick = () => run();
+
+btnRec.onclick = () => {
+  if (!window.MediaRecorder || !cv.captureStream) { status.textContent = 'Bu tarayıcı kaydı desteklemiyor — Chrome veya Edge kullan.'; return; }
+  const types = ['video/mp4;codecs=avc1.640028', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  const mime = types.find(m => MediaRecorder.isTypeSupported(m));
+  const ext = mime && mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+  const rec = new MediaRecorder(cv.captureStream(60), { mimeType: mime, videoBitsPerSecond: 16_000_000 });
+  const chunks = [];
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.onstop = () => {
+    const blob = new Blob(chunks, { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `Smart3DView-intro.${ext}`; a.click();
+    status.textContent = `Hazır: Smart3DView-intro.${ext} indirildi (${(blob.size / 1048576).toFixed(1)} MB). Clipchamp'e sürükle.`;
+    btnPlay.disabled = btnRec.disabled = false;
+  };
+  btnPlay.disabled = btnRec.disabled = true;
+  status.textContent = 'Kaydediliyor…';
+  frame(0); rec.start();
+  run(() => setTimeout(() => rec.stop(), 150));
+};
+
+frame(DUR - 1.2);  // açılışta son kareyi önizleme olarak göster
+</script>
+</body>
+</html>
