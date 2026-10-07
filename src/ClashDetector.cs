@@ -22,7 +22,8 @@ static class ClashDetector
 {
     const double Tol = 0.003; // ft ≈ 1 mm: bu kadar yakın yüzeyler "dokunuyor" sayılır
 
-    public static ClashResult Run(SceneData s, double[] boxMin, double[] boxMax)
+    /// <param name="hidden">filtreyle gizlenen elemanlar (indeks = id) — denetime girmez</param>
+    public static ClashResult Run(SceneData s, double[] boxMin, double[] boxMax, bool[]? hidden = null)
     {
         var sw = Stopwatch.StartNew();
         var res = new ClashResult();
@@ -39,7 +40,7 @@ static class ClashDetector
             for (int t = 0; t + 2 < idx.Length; t += 3)
             {
                 uint id = verts[(int)idx[t]].Id;
-                if (id > 0 && id <= n && group[(int)id - 1] != ClashGroup.None) count[id]++;
+                if (id > 0 && id <= n && group[(int)id - 1] != ClashGroup.None && (hidden == null || !hidden[id])) count[id]++;
             }
         }
         var start = new int[n + 2];
@@ -56,7 +57,7 @@ static class ClashDetector
             for (int t = 0; t + 2 < idx.Length; t += 3)
             {
                 uint id = verts[(int)idx[t]].Id;
-                if (id == 0 || id > n || group[(int)id - 1] == ClashGroup.None) continue;
+                if (id == 0 || id > n || group[(int)id - 1] == ClashGroup.None || (hidden != null && hidden[id])) continue;
                 int o = fill[id]++ * 9;
                 for (int k = 0; k < 3; k++)
                 {

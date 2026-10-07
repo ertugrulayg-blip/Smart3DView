@@ -52,7 +52,7 @@
 <main data-l="en">
   <div class="toc">
     <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
-    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a>
+    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-panel">Panel &amp; filter</a>
     <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
     <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
   </div>
@@ -113,6 +113,15 @@
   <h2 id="en-pic">Take picture</h2>
   <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>.</p>
 
+  <h2 id="en-panel">Panel, filter, properties, tags and view cube</h2>
+  <ul>
+    <li><b>Panel</b>: the right-hand panel lists the categories in the view with element counts — untick one (e.g. Cable Trays, Mechanical Equipment) to hide it. Hidden categories are not picked, measured or clash-checked, and stay hidden in new windows.</li>
+    <li><b>Properties</b>: click an element to see its size, width/height, length, level, offset/elevation, system, mark, comments and all other parameters (in project units). <b>Select and show in Revit</b> selects it in the model.</li>
+    <li><b>Tag</b> (<kbd>T</kbd>): hover over an element to see its category, type and size next to the cursor.</li>
+    <li><b>View cube</b> (top right): click a face, edge or corner to look exactly from the right, left, front, top… <b>⌂ 3D</b> under it returns to the isometric view.</li>
+    <li><b>Clash</b> uses two colors: red and blue are the two sides of a clash (e.g. pipes red, ducts blue). Click a clashing element: it turns red, the elements it clashes with turn blue.</li>
+  </ul>
+
   <h2 id="en-measure">Measure</h2>
   <p>Click <b>Measure</b> (<kbd>D</kbd>), then click two points. The cursor snaps like AutoCAD object snap, and the marker shows what it holds: <b>✕ corner/endpoint</b>, <b>○ edge midpoint</b>, <b>◉ pipe/duct axis</b> (arc centre), <b>// on an edge</b>, <b>◇ on a face</b>; the status bar names it too. The distance is shown on the line and, with its ΔX / ΔY / ΔZ parts, in the status bar, in the project's length units.</p>
   <ul>
@@ -131,6 +140,7 @@
     <tr><td><kbd>Home</kbd></td><td>Default view</td><td><kbd>C</kbd></td><td>Clash detection</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Clear selection</td><td><kbd>P</kbd></td><td>Take picture</td></tr>
     <tr><td><kbd>F1</kbd></td><td>This help</td><td><kbd>R</kbd> / <kbd>F5</kbd></td><td>Reload from Revit</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Tag (hover info)</td><td></td><td></td></tr>
     <tr><td><kbd>D</kbd></td><td>Measure</td><td><kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd></td><td>Axis lock (while measuring)</td></tr>
   </table>
   <p>Tip: in Revit you can assign your own keyboard shortcut to the Smart 3D View button (View → User Interface → Keyboard Shortcuts).</p>
@@ -172,7 +182,7 @@
 <main data-l="tr">
   <div class="toc">
     <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
-    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a>
+    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-panel">Panel ve filtre</a>
     <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
     <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
   </div>
@@ -233,6 +243,15 @@
   <h2 id="tr-pic">Görüntü al</h2>
   <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır.</p>
 
+  <h2 id="tr-panel">Panel, filtre, özellikler, etiket ve görünüm küpü</h2>
+  <ul>
+    <li><b>Panel</b>: sağ panel görünümdeki kategorileri eleman sayılarıyla listeler — birinin işaretini kaldırın (ör. Kablo Tavaları, Mekanik Cihazlar), gizlenir. Gizli kategoriler seçilmez, ölçülmez, çakışmaya girmez ve yeni pencerelerde de gizli kalır.</li>
+    <li><b>Özellikler</b>: bir elemana tıklayın; boyut, genişlik/yükseklik, uzunluk, seviye, ötelenme/kot, sistem, işaret, yorumlar ve diğer tüm parametreler (proje biriminde) görünür. <b>Revit'te seç ve göster</b> elemanı modelde seçer.</li>
+    <li><b>Etiket</b> (<kbd>T</kbd>): imleci bir elemanın üstünde gezdirin; kategori, tip ve boyutu imlecin yanında yazar.</li>
+    <li><b>Görünüm küpü</b> (sağ üst): bir yüze, kenara ya da köşeye tıklayın; tam sağdan, soldan, önden, üstten… bakar. Altındaki <b>⌂ 3B</b> izometrik görünüme döner.</li>
+    <li><b>Çakışma</b> iki renk kullanır: kırmızı ve mavi çakışmanın iki tarafıdır (ör. borular kırmızı, kanallar mavi). Çakışan bir elemana tıklayın: kendisi kırmızı, çakıştıkları mavi olur.</li>
+  </ul>
+
   <h2 id="tr-measure">Ölç</h2>
   <p><b>Ölç</b>'e tıklayın (<kbd>D</kbd>), sonra iki nokta tıklayın. İmleç AutoCAD nesne yakalaması gibi yapışır, işaretin şekli neyi tuttuğunu gösterir: <b>✕ köşe/uç</b>, <b>○ kenar ortası</b>, <b>◉ boru/kanal ekseni</b> (yay merkezi), <b>// kenar üzeri</b>, <b>◇ yüzey</b>; durum çubuğunda da adı yazar. Mesafe çizginin üstünde, ΔX / ΔY / ΔZ bileşenleriyle birlikte durum çubuğunda, projenin uzunluk biriminde yazılır.</p>
   <ul>
@@ -251,6 +270,7 @@
     <tr><td><kbd>Home</kbd></td><td>Varsayılan görünüm</td><td><kbd>C</kbd></td><td>Çakışma denetimi</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Seçimi bırak</td><td><kbd>P</kbd></td><td>Görüntü al</td></tr>
     <tr><td><kbd>F1</kbd></td><td>Bu yardım</td><td><kbd>R</kbd> / <kbd>F5</kbd></td><td>Revit'ten yenile</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Etiket (anlık bilgi)</td><td></td><td></td></tr>
     <tr><td><kbd>D</kbd></td><td>Ölç</td><td><kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd></td><td>Eksen kilidi (ölçerken)</td></tr>
   </table>
   <p>İpucu: Revit'te Smart 3D View düğmesine kendi kısayolunuzu atayabilirsiniz (Görünüm → Kullanıcı Arayüzü → Klavye Kısayolları).</p>

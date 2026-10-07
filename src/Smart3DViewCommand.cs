@@ -8,7 +8,7 @@ using Autodesk.Revit.UI.Selection;
 
 namespace Smart3DView;
 
-[Transaction(TransactionMode.ReadOnly)]
+[Transaction(TransactionMode.Manual)]   // geçici Fine görünüm (kablo tavaları) için işlem açılıp geri alınır
 public class Smart3DViewCommand : IExternalCommand
 {
     public Result Execute(ExternalCommandData data, ref string message, ElementSet elements)

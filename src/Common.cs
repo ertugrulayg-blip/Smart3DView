@@ -33,6 +33,13 @@ interface IViewerHost
 
     /// <summary>Bağlamın bu belgeden okunup okunmadığı (Revit'te model değişince "Yenile" düğmesini uyarmak için).</summary>
     bool IsFromDoc(object context, object doc);
+
+    /// <summary>Elemanın özellikleri (başlık, değer) — önce önemli olanlar, sonra diğer dolu parametreler.
+    /// done(null, hata) olabilir. Revit tarafında ExternalEvent ile okunur.</summary>
+    void GetInfo(object context, SceneData scene, uint sceneId, System.Action<System.Collections.Generic.List<(string name, string value, bool key)>?, string?> done);
+
+    /// <summary>Elemanı Revit'te seç ve göster (yalnız ana modeldeki elemanlar).</summary>
+    void ShowInRevit(object context, SceneData scene, uint sceneId, System.Action<string?> done);
 }
 
 /// <summary>Revit modelindeki değişiklik bildirimi (App, DocumentChanged'den çağırır). Pencere Revit türü bilmeden dinler.</summary>

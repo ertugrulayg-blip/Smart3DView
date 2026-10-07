@@ -38,7 +38,7 @@ sealed record Palette(
 }
 
 /// <summary>Ayrı pencere: üstte OpenGL görünümü, altta ince çubuk (durum yazısı + araçlar + ton seçici).</summary>
-sealed class ViewerWindow : Window
+sealed partial class ViewerWindow : Window
 {
     static readonly System.Collections.Generic.List<ViewerWindow> Open = new();
 
@@ -146,12 +146,16 @@ sealed class ViewerWindow : Window
         var dock = new DockPanel();
         DockPanel.SetDock(_bar, Dock.Bottom);
         dock.Children.Add(_bar);
+        DockPanel.SetDock(_side, Dock.Right);
+        dock.Children.Add(_side);
         dock.Children.Add(_view);
+        BuildSide();
         Content = dock;
 
         for (int i = 0; i < Palette.All.Length; i++) _swatches.Children.Add(MakeSwatch(i));
 
         _view.SelectionChanged += UpdateStatus;
+        _view.SelectionChanged += () => { if (_sideOpen) ShowProps(); };
         _view.MeasureChanged += () => { UpdateStatus(); RefreshTools(); };
         _view.PaletteKey += ApplyPalette;
         _view.ToolKey += k =>
@@ -162,6 +166,7 @@ sealed class ViewerWindow : Window
             else if (k == 'P') TakePicture();
             else if (k == 'R') Reload();
             else if (k == 'D') ToggleMeasure();
+            else if (k == 'T') ToggleTag();
             else if (k == '?') Help.Open();
         };
         _view.Failed += msg => { _error = msg; UpdateStatus(); };
@@ -199,6 +204,9 @@ sealed class ViewerWindow : Window
         _timing = scene.Timing;
         _clash = null;
         _view.SetScene(scene, keepView);
+        _view.SetHiddenCategories(_hidden);
+        RebuildFilter();
+        if (_sideOpen) ShowProps();
         if (_clashOn) _ = RunClash();
         UpdateStatus();
     }
@@ -296,14 +304,15 @@ sealed class ViewerWindow : Window
         var lo = _view.BoxMin;
         var hi = _view.BoxMax;
         Flash(L.T("Çakışmalar hesaplanıyor…", "Checking clashes…"));
-        var r = await Task.Run(() => ClashDetector.Run(scene, lo, hi));
+        var hid = _view.HiddenMask();
+        var r = await Task.Run(() => ClashDetector.Run(scene, lo, hi, hid));
         if (scene != _scene || !_clashOn) return;
         _clash = r;
         _view.SetClash(r);
         Flash(r.PairCount == 0
             ? L.T($"Çakışma yok ({r.Seconds:0.0} sn).", $"No clashes ({r.Seconds:0.0} s).")
-            : L.T($"{r.Elements.Count} çakışan eleman, {r.PairCount} çakışma ({r.Seconds:0.0} sn). Kırmızı elemana tıkla: neyle çakıştığını gösterir.",
-                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Click a red element to see what it clashes with."));
+            : L.T($"{r.Elements.Count} çakışan eleman, {r.PairCount} çakışma ({r.Seconds:0.0} sn). Kırmızı ve mavi = çakışmanın iki tarafı. Bir elemana tıkla: kendisi kırmızı, çakıştıkları mavi olur.",
+                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Red and blue = the two sides of a clash. Click an element: it turns red, the elements it clashes with turn blue."));
     }
 
     void TakePicture()
@@ -375,6 +384,7 @@ sealed class ViewerWindow : Window
 
     void RefreshTools()
     {
+        RefreshSide();
         bool dark = Luma(_pal.BgBottom) < 0.45;
         var ink = dark ? Colors.White : Color.FromRgb(0x20, 0x20, 0x20);
         var st = License.State;
@@ -507,6 +517,9 @@ sealed class ViewerWindow : Window
                 .ToDictionary(a => a[0].Trim(), a => a[1].Trim());
             double D(string k) => kv.TryGetValue(k, out var s) && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : double.NaN;
             if (kv.TryGetValue("palette", out var ps) && int.TryParse(ps, out var pi)) _palIndex = pi;
+            if (kv.TryGetValue("hidden", out var hs)) foreach (var hn in hs.Split('|', StringSplitOptions.RemoveEmptyEntries)) _hidden.Add(hn);
+            if (kv.TryGetValue("side", out var sd)) _sideOpen = sd == "1";
+            if (kv.TryGetValue("tag", out var tg)) _tagOn = tg == "1";
             double l = D("left"), t = D("top"), w = D("width"), h = D("height");
             if (!double.IsNaN(w) && !double.IsNaN(h) && w > 200 && h > 150) { Width = w; Height = h; }
             var vs = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
@@ -530,6 +543,9 @@ sealed class ViewerWindow : Window
             File.WriteAllLines(SettingsPath, new[]
             {
                 $"palette={_palIndex}",
+                "hidden=" + string.Join("|", _hidden),
+                $"side={(_sideOpen ? 1 : 0)}",
+                $"tag={(_tagOn ? 1 : 0)}",
                 $"left={r.Left.ToString(ci)}", $"top={r.Top.ToString(ci)}",
                 $"width={r.Width.ToString(ci)}", $"height={r.Height.ToString(ci)}",
                 $"max={(WindowState == WindowState.Maximized ? 1 : 0)}",

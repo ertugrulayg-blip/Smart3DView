@@ -22,14 +22,55 @@ static class SceneCollector
         // elemanlar "görünür" sayılmadığı için tüm belge taranır.
         ElementId? viewId = activeView is View3D v3 && !v3.IsTemplate ? activeView.Id : null;
 
-        new DocPass(ctx, doc, frameInv, viewId, null).Run();
-
-        var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
-        foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
+        // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
+        // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
+        // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
+        // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) eski davranış.
+        Transaction? tmp = null;
+        Options? trayOpt = null;
+        try
         {
-            var ld = li.GetLinkDocument();
-            if (ld == null) continue;
-            new DocPass(ctx, ld, frameInv.Multiply(li.GetTotalTransform()), null, ld.Title).Run();
+            if (!doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument &&
+                new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_CableTray).WhereElementIsNotElementType().GetElementCount() > 0)
+            {
+                ViewFamilyType? vft = null;
+                foreach (ViewFamilyType t in new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)))
+                    if (t.ViewFamily == ViewFamily.ThreeDimensional) { vft = t; break; }
+                if (vft != null)
+                {
+                    tmp = new Transaction(doc, Product.Name + " temp view");
+                    if (tmp.Start() == TransactionStatus.Started)
+                    {
+                        var fv = View3D.CreateIsometric(doc, vft.Id);
+                        if (fv.ViewTemplateId != ElementId.InvalidElementId) fv.ViewTemplateId = ElementId.InvalidElementId;
+                        fv.DetailLevel = ViewDetailLevel.Fine;
+                        doc.Regenerate();
+                        trayOpt = new Options { View = fv, ComputeReferences = false, IncludeNonVisibleObjects = false };
+                    }
+                }
+            }
+        }
+        catch { trayOpt = null; }
+
+        try
+        {
+            scene.Docs.Add(doc);
+            new DocPass(ctx, doc, frameInv, viewId, null, 0, trayOpt).Run();
+
+            var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
+            foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
+            {
+                var ld = li.GetLinkDocument();
+                if (ld == null || scene.Docs.Count > 250) continue;
+                byte di = (byte)scene.Docs.Count;
+                scene.Docs.Add(ld);
+                new DocPass(ctx, ld, frameInv.Multiply(li.GetTotalTransform()), null, ld.Title, di, null).Run();
+            }
+        }
+        finally
+        {
+            try { if (tmp != null && tmp.HasStarted() && !tmp.HasEnded()) tmp.RollBack(); } catch { }
+            tmp?.Dispose();
         }
 
         scene.FormatLength = LengthFormat.Make(doc);
@@ -122,6 +163,8 @@ sealed class DocPass
     readonly Transform _toLocal, _toDoc;
     readonly ElementId? _viewId;
     readonly string? _linkName;
+    readonly byte _docIdx;
+    readonly Options? _trayOpt;   // kablo tavaları için geçici Fine görünümlü seçenekler (yalnız ana model)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();
     readonly Dictionary<long, bool> _skipStyle = new();
@@ -135,9 +178,10 @@ sealed class DocPass
     uint _id;
     bool _emitted;
 
-    public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName)
+    public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName, byte docIdx, Options? trayOpt)
     {
         _c = c; _doc = doc; _toLocal = docToLocal; _toDoc = docToLocal.Inverse; _viewId = viewId; _linkName = linkName;
+        _docIdx = docIdx; _trayOpt = trayOpt;
         _x0 = c.Min.X; _y0 = c.Min.Y; _z0 = c.Min.Z; _x1 = c.Max.X; _y1 = c.Max.Y; _z1 = c.Max.Z;
     }
 
@@ -164,7 +208,7 @@ sealed class DocPass
             if (Excluded.Contains(bic)) continue;
             GeometryElement? ge;
             long tg = Stopwatch.GetTimestamp();
-            try { ge = e.get_Geometry(_opt); } catch { continue; }
+            try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
             finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
             if (ge == null) continue;
             _tone = Horizontal.Contains(bic) ? Tone.Horizontal
@@ -179,6 +223,10 @@ sealed class DocPass
 
             long ti = Stopwatch.GetTimestamp();
             scene.Labels.Add(Label(e, cat));
+            scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name));
+            scene.ElemRevitId.Add(e.Id.Value);
+            scene.ElemDoc.Add(_docIdx);
+            scene.ElemTag.Add(Tag(e));
             var (color, group, host) = Classify(e, bic);
             scene.ElemColor.Add((byte)color);
             scene.ElemGroup.Add(group);
@@ -463,6 +511,30 @@ sealed class DocPass
             return n0.DotProduct(n1) > SmoothEdgeCos;
         }
         catch { return false; }
+    }
+
+    /// <summary>Anlık etiket için kısa boyut: Revit'in hesapladığı boyut (boru/kanal/tava/conduit ve fittingleri),
+    /// yoksa genişlik × yükseklik. Proje birimiyle biçimli (AsValueString). Bulunamazsa "".</summary>
+    static string Tag(Element e)
+    {
+        try
+        {
+            var s = e.get_Parameter(BuiltInParameter.RBS_CALCULATED_SIZE)?.AsString();
+            if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
+            string? w = e.get_Parameter(BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM)?.AsValueString()
+                        ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_WIDTH_PARAM)?.AsValueString()
+                        ?? e.LookupParameter("Width")?.AsValueString() ?? e.LookupParameter("Genişlik")?.AsValueString();
+            string? h = e.get_Parameter(BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM)?.AsValueString()
+                        ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_HEIGHT_PARAM)?.AsValueString()
+                        ?? e.LookupParameter("Height")?.AsValueString() ?? e.LookupParameter("Yükseklik")?.AsValueString();
+            if (!string.IsNullOrEmpty(w) && !string.IsNullOrEmpty(h)) return w + " × " + h;
+            var d = e.get_Parameter(BuiltInParameter.RBS_PIPE_DIAMETER_PARAM)?.AsValueString()
+                    ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_DIAMETER_PARAM)?.AsValueString()
+                    ?? e.get_Parameter(BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM)?.AsValueString();
+            if (!string.IsNullOrEmpty(d)) return "Ø" + d;
+            return w ?? "";
+        }
+        catch { return ""; }
     }
 
     string Label(Element e, Category cat)

@@ -501,14 +501,25 @@ void main(){ o = texture(uTex, vUv); }";
         GL.Enable(GL.DEPTH_TEST);
     }
 
+    enum LabelStyle { Measure, Cube, Tag }
+
     void DrawLabel(Point3D a, Point3D b, string text)
     {
         var mid = new Point3D((a.X + b.X) / 2, (a.Y + b.Y) / 2, (a.Z + b.Z) / 2);
         if (Project(mid) is not { } sp) return;
+        var (_, _, h) = LabelTexture(text, LabelStyle.Measure);
+        DrawTextAt(new Point(sp.X, sp.Y - h / 2.0 - 6), text, LabelStyle.Measure, center: true);
+    }
+
+    /// <summary>Ekran pikselinde yazı: center → p ortası, değilse p sol-üst köşe (pencere dışına taşmaz).</summary>
+    void DrawTextAt(Point p, string text, LabelStyle style, bool center)
+    {
         if (_pText == 0) return;
-        var (tex, w, h) = LabelTexture(text);
+        var (tex, w, h) = LabelTexture(text, style);
         if (tex == 0) return;
-        float x0 = (float)Math.Round(sp.X - w / 2.0), y0 = (float)Math.Round(sp.Y - h - 6), x1 = x0 + w, y1 = y0 + h;
+        double x = center ? p.X - w / 2.0 : p.X, y = center ? p.Y - h / 2.0 : p.Y;
+        if (!center) { x = Math.Min(x, _w - w - 4); y = Math.Min(y, _h - h - 4); }
+        float x0 = (float)Math.Round(x), y0 = (float)Math.Round(y), x1 = x0 + w, y1 = y0 + h;
         var q = new[] { x0, y0, 0f, 0f, x1, y0, 1f, 0f, x0, y1, 0f, 1f, x1, y1, 1f, 1f };
         GL.UseProgram(_pText);
         GL.Uniform3f(tView, _w, _h, 0);
@@ -518,7 +529,7 @@ void main(){ o = texture(uTex, vUv); }";
         GL.BlendFunc(GL.ONE, GL.ONE_MINUS_SRC_ALPHA);   // WPF bitmapi önceden çarpılmış alfa
         GL.BindVertexArray(_tvao);
         GL.BindBuffer(GL.ARRAY_BUFFER, _tvbo);
-        fixed (float* p = q) GL.BufferData(GL.ARRAY_BUFFER, q.Length * 4, p, GL.DYNAMIC_DRAW);
+        fixed (float* pq = q) GL.BufferData(GL.ARRAY_BUFFER, q.Length * 4, pq, GL.DYNAMIC_DRAW);
         GL.DrawArrays(GL.TRIANGLE_STRIP, 0, 4);
         GL.BindVertexArray(0);
         GL.BindBuffer(GL.ARRAY_BUFFER, 0);
@@ -526,22 +537,29 @@ void main(){ o = texture(uTex, vUv); }";
         GL.BlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
     }
 
-    /// <summary>Etiketi WPF ile (ClearType'sız, net) bir bitmape çizip dokuya yükler; aynı metin önbellekten.</summary>
-    (uint tex, int w, int h) LabelTexture(string text)
+    /// <summary>Etiketi WPF ile bir bitmape çizip dokuya yükler; aynı metin+stil önbellekten.</summary>
+    (uint tex, int w, int h) LabelTexture(string text, LabelStyle style)
     {
-        if (_labelTex.TryGetValue(text, out var hit)) return hit;
-        if (_labelTex.Count > 96) FreeLabels();
+        string key = (int)style + "|" + text;
+        if (_labelTex.TryGetValue(key, out var hit)) return hit;
+        if (_labelTex.Count > 160) FreeLabels();
         double dpi = 1;
         try { dpi = VisualTreeHelper.GetDpi(this).DpiScaleX; } catch { }
+        var (bg, fg, size, weight, pad) = style switch
+        {
+            LabelStyle.Cube => (Color.FromArgb(0, 0, 0, 0), Color.FromRgb(0x30, 0x30, 0x30), 9.5, FontWeights.Bold, 1.0),
+            LabelStyle.Tag => (Color.FromArgb(0xEE, 0x1E, 0x29, 0x3B), Colors.White, 12.0, FontWeights.SemiBold, 7.0),
+            _ => (Color.FromArgb(0xE6, 0xD9, 0x5F, 0x0A), Colors.White, 12.5, FontWeights.SemiBold, 7.0),
+        };
         var ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
-            12.5 * dpi, Brushes.White, dpi);
-        int padX = (int)(7 * dpi), padY = (int)(3 * dpi);
+            new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
+            size * dpi, new SolidColorBrush(fg), dpi);
+        int padX = (int)(pad * dpi), padY = (int)((style == LabelStyle.Cube ? 0 : 3) * dpi);
         int w = (int)Math.Ceiling(ft.Width) + 2 * padX, h = (int)Math.Ceiling(ft.Height) + 2 * padY;
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
         {
-            dc.DrawRoundedRectangle(new SolidColorBrush(Color.FromArgb(0xE6, 0xD9, 0x5F, 0x0A)), null, new Rect(0, 0, w, h), 4 * dpi, 4 * dpi);
+            if (bg.A > 0) dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, new Rect(0, 0, w, h), 4 * dpi, 4 * dpi);
             dc.DrawText(ft, new Point(padX, padY));
         }
         var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
@@ -559,7 +577,7 @@ void main(){ o = texture(uTex, vUv); }";
         fixed (byte* p = px) GL.TexImage2D(GL.TEXTURE_2D, 0, (int)GL.RGBA8, w, h, 0, GL.BGRA, GL.UNSIGNED_BYTE, p);
         GL.BindTexture(GL.TEXTURE_2D, 0);
         var r = (tex, w, h);
-        _labelTex[text] = r;
+        _labelTex[key] = r;
         return r;
     }
 }

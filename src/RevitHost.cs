@@ -66,6 +66,88 @@ sealed class RevitHost : IViewerHost
     }
 
 
+    // Özellik panelinde üstte gösterilen parametreler (sırasıyla); değer proje birimiyle (AsValueString).
+    static readonly BuiltInParameter[] KeyParams =
+    {
+        BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM,
+        BuiltInParameter.RBS_CALCULATED_SIZE,
+        BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM, BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM,
+        BuiltInParameter.RBS_CURVE_WIDTH_PARAM, BuiltInParameter.RBS_CURVE_HEIGHT_PARAM, BuiltInParameter.RBS_CURVE_DIAMETER_PARAM,
+        BuiltInParameter.RBS_PIPE_DIAMETER_PARAM, BuiltInParameter.RBS_PIPE_OUTER_DIAMETER, BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM,
+        BuiltInParameter.CURVE_ELEM_LENGTH,
+        BuiltInParameter.RBS_START_LEVEL_PARAM, BuiltInParameter.FAMILY_LEVEL_PARAM, BuiltInParameter.SCHEDULE_LEVEL_PARAM,
+        BuiltInParameter.RBS_OFFSET_PARAM, BuiltInParameter.RBS_CTC_BOTTOM_ELEVATION, BuiltInParameter.RBS_CTC_TOP_ELEVATION,
+        BuiltInParameter.INSTANCE_ELEVATION_PARAM, BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM,
+        BuiltInParameter.RBS_SYSTEM_CLASSIFICATION_PARAM, BuiltInParameter.RBS_PIPING_SYSTEM_TYPE_PARAM, BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM,
+        BuiltInParameter.RBS_SYSTEM_NAME_PARAM, BuiltInParameter.RBS_REFERENCE_INSULATION_THICKNESS, BuiltInParameter.RBS_REFERENCE_LINING_THICKNESS,
+        BuiltInParameter.ALL_MODEL_MARK, BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS,
+    };
+
+    static string? Val(Parameter p)
+    {
+        if (p == null || !p.HasValue) return null;
+        string? s = p.StorageType == StorageType.String ? p.AsString() : p.AsValueString();
+        if (string.IsNullOrWhiteSpace(s) && p.StorageType == StorageType.ElementId)
+        {
+            var id = p.AsElementId();
+            if (id != ElementId.InvalidElementId && p.Element?.Document.GetElement(id) is Element r) s = r.Name;
+        }
+        return string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    }
+
+    public void GetInfo(object context, SceneData scene, uint sceneId, Action<List<(string name, string value, bool key)>?, string?> done)
+    {
+        RevitBridge.Post(_ =>
+        {
+            int i = (int)sceneId - 1;
+            if (i < 0 || i >= scene.ElemRevitId.Count) { done(null, "?"); return; }
+            if (scene.Docs[scene.ElemDoc[i]] is not Document d || !d.IsValidObject) { done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
+            var e = d.GetElement(new ElementId(scene.ElemRevitId[i]));
+            if (e == null) { done(null, L.T("Eleman artık yok (silinmiş olabilir) — Yenile.", "The element no longer exists (maybe deleted) — Reload.")); return; }
+            var rows = new List<(string, string, bool)>();
+            var seen = new HashSet<string>();
+            rows.Add((L.T("Kategori", "Category"), e.Category?.Name ?? "", true));
+            rows.Add(("ID", e.Id.Value.ToString() + (scene.ElemDoc[i] > 0 ? "  (" + d.Title + ")" : ""), true));
+            foreach (var bip in KeyParams)
+            {
+                Parameter? p = null;
+                try { p = e.get_Parameter(bip); } catch { }
+                if (p == null || Val(p) is not { } v) continue;
+                var n = p.Definition?.Name ?? bip.ToString();
+                if (seen.Add(n)) rows.Add((n, v, true));
+            }
+            var rest = new List<(string, string, bool)>();
+            foreach (Parameter p in e.Parameters)
+            {
+                var n = p.Definition?.Name;
+                if (string.IsNullOrEmpty(n) || seen.Contains(n) || Val(p) is not { } v) continue;
+                seen.Add(n);
+                rest.Add((n, v, false));
+            }
+            rest.Sort((a, b) => string.Compare(a.Item1, b.Item1, StringComparison.CurrentCultureIgnoreCase));
+            rows.AddRange(rest);
+            done(rows, null);
+        });
+    }
+
+    public void ShowInRevit(object context, SceneData scene, uint sceneId, Action<string?> done)
+    {
+        RevitBridge.Post(app =>
+        {
+            int i = (int)sceneId - 1;
+            if (i < 0 || i >= scene.ElemRevitId.Count) { done("?"); return; }
+            if (scene.ElemDoc[i] != 0) { done(L.T("Bağlı modeldeki eleman Revit'te seçilemez.", "Elements of linked models cannot be selected in Revit.")); return; }
+            var uidoc = app.ActiveUIDocument;
+            if (uidoc == null || scene.Docs[0] is not Document d || !uidoc.Document.Equals(d)) { done(L.T("Bu modeli Revit'te etkin pencere yapın.", "Make this model the active window in Revit.")); return; }
+            var id = new ElementId(scene.ElemRevitId[i]);
+            if (d.GetElement(id) == null) { done(L.T("Eleman artık yok — Yenile.", "The element no longer exists — Reload.")); return; }
+            var ids = new List<ElementId> { id };
+            uidoc.Selection.SetElementIds(ids);
+            try { uidoc.ShowElements(ids); } catch { }
+            done(null);
+        });
+    }
+
     public bool IsFromDoc(object context, object doc) => context is RevitContext c && doc is Document d && c.Doc.IsValidObject && c.Doc.Equals(d);
     public void SaveImage(object context, string pngPath, Action<string> done)
     {

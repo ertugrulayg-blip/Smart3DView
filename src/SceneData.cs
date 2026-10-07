@@ -61,6 +61,21 @@ sealed class SceneData
     public readonly HashSet<ulong> Connected = new(); // connector ile birbirine bağlı eleman çiftleri (PairKey)
     public readonly List<SnapPoint> Snaps = new(); // ölçü yakalama: köşe, kenar ortası, yay merkezi
 
+    // Filtre / özellikler / anlık etiket (indeks = id-1)
+    public readonly List<string> CatNames = new();   // sahnedeki Revit kategori adları (filtre listesi)
+    public readonly List<ushort> ElemCat = new();    // → CatNames indeksi
+    public readonly List<long> ElemRevitId = new();  // Revit ElementId değeri (kendi belgesinde)
+    public readonly List<byte> ElemDoc = new();      // → Docs indeksi (0 = ana model, sonrası bağlı modeller)
+    public readonly List<object> Docs = new();       // Revit belgeleri (pencere türünü bilmez; Revit tarafı kullanır)
+    public readonly List<string> ElemTag = new();    // anlık etiket: kısa boyut ("300x100", "Ø50") — yoksa ""
+
+    public int CatIndex(string name)
+    {
+        int i = CatNames.IndexOf(name);
+        if (i < 0) { CatNames.Add(name); i = CatNames.Count - 1; }
+        return i;
+    }
+
     /// <summary>Uzunluk biçimi (feet → projenin uzunluk birimi, Revit tarafı ayarlar). Varsayılan mm.</summary>
     public System.Func<double, string> FormatLength = ft => (ft * 304.8).ToString("N0", System.Globalization.CultureInfo.CurrentCulture) + " mm";
     /// <summary>Kutu çerçevesinin dünya Z ekseni etrafındaki dönüşü (radyan): ölçüde X/Y kilidi PROJE eksenlerine göre.</summary>
