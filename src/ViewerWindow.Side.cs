@@ -36,7 +36,7 @@ sealed partial class ViewerWindow
         row.Children.Add(SmallButton(L.T("Tümünü göster", "Show all"), () => { _hidden.Clear(); ApplyFilter(); }));
         row.Children.Add(SmallButton(L.T("Hiçbiri", "None"), () =>
         {
-            foreach (var (n, _) in _view.Categories()) _hidden.Add(n);
+            foreach (var (n, _, _) in _view.Categories()) _hidden.Add(n);
             ApplyFilter();
         }));
         stack.Children.Add(row);
@@ -85,25 +85,67 @@ sealed partial class ViewerWindow
         if (_clashOn) _ = RunClash();   // gizlenen kategoriler çakışmaya girmez
     }
 
+    // Filtre 4 ana başlıkta (kullanıcı isteği, 2026-10-07): başlık kutusu o disiplinin tümünü açar/kapatır, ▸ ile alt
+    // kategoriler açılıp tek tek değiştirilir. Başlık kutusu üç durumlu: hepsi görünür ✓, hepsi gizli ☐, karışık ■.
+    static readonly (string tr, string en)[] Disciplines = { ("Mimari", "Architecture"), ("Statik", "Structure"), ("Mekanik", "Mechanical"), ("Elektrik", "Electrical") };
+    static readonly HashSet<int> _expanded = new();   // açık başlıklar (pencereler arasında ortak)
+
     void RebuildFilter()
     {
         _filterList.Children.Clear();
         var ink = Ink;
-        foreach (var (name, count) in _view.Categories())
+        var cats = _view.Categories();
+        for (int d = 0; d < Disciplines.Length; d++)
         {
-            var cb = new CheckBox
+            var mine = cats.FindAll(c => c.disc == d);
+            if (mine.Count == 0) continue;
+            int total = 0, shown = 0;
+            foreach (var c in mine) { total += c.count; if (!_hidden.Contains(c.name)) shown++; }
+            int disc = d;
+            bool open = _expanded.Contains(d);
+
+            var head = new DockPanel { Margin = new Thickness(0, 4, 0, 2) };
+            var arrow = new TextBlock
             {
-                Content = $"{name}  ({count:N0})", IsChecked = !_hidden.Contains(name), Foreground = ink,
-                Margin = new Thickness(0, 2, 0, 2), FontSize = 12,
+                Text = open ? "▼" : "▶", Width = 18, FontSize = 10, Foreground = ink, Cursor = System.Windows.Input.Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center, ToolTip = L.T("Alt kategorileri aç/kapa", "Expand/collapse categories"),
             };
-            string n = name;
-            cb.Click += (_, _) =>
+            arrow.MouseLeftButtonUp += (_, e) => { if (!_expanded.Remove(disc)) _expanded.Add(disc); RebuildFilter(); e.Handled = true; };
+            var all = new CheckBox
             {
-                if (cb.IsChecked == true) _hidden.Remove(n); else _hidden.Add(n);
+                Content = $"{L.T(Disciplines[d].tr, Disciplines[d].en)}  ({total:N0})", FontWeight = FontWeights.SemiBold, FontSize = 12.5,
+                Foreground = ink, IsThreeState = false, VerticalAlignment = VerticalAlignment.Center,
+                IsChecked = shown == mine.Count ? true : shown == 0 ? false : null,
+            };
+            all.Click += (_, _) =>
+            {
+                bool anyShown = shown > 0;   // bir kısmı ya da hepsi açıksa → hepsini kapat; hepsi kapalıysa → hepsini aç
+                foreach (var c in mine) { if (anyShown) _hidden.Add(c.name); else _hidden.Remove(c.name); }
                 ApplyFilter();
                 _view.FocusGl();
             };
-            _filterList.Children.Add(cb);
+            DockPanel.SetDock(arrow, Dock.Left);
+            head.Children.Add(arrow);
+            head.Children.Add(all);
+            _filterList.Children.Add(head);
+            if (!open) continue;
+
+            foreach (var (name, count, _) in mine)
+            {
+                var cb = new CheckBox
+                {
+                    Content = $"{name}  ({count:N0})", IsChecked = !_hidden.Contains(name), Foreground = ink,
+                    Margin = new Thickness(22, 1, 0, 1), FontSize = 12,
+                };
+                string n = name;
+                cb.Click += (_, _) =>
+                {
+                    if (cb.IsChecked == true) _hidden.Remove(n); else _hidden.Add(n);
+                    ApplyFilter();
+                    _view.FocusGl();
+                };
+                _filterList.Children.Add(cb);
+            }
         }
     }
 

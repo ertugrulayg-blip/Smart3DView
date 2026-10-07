@@ -63,16 +63,17 @@ sealed class SceneData
 
     // Filtre / özellikler / anlık etiket (indeks = id-1)
     public readonly List<string> CatNames = new();   // sahnedeki Revit kategori adları (filtre listesi)
+    public readonly List<byte> CatDisc = new();      // kategori disiplini: 0 Mimari, 1 Statik, 2 Mekanik, 3 Elektrik
     public readonly List<ushort> ElemCat = new();    // → CatNames indeksi
     public readonly List<long> ElemRevitId = new();  // Revit ElementId değeri (kendi belgesinde)
     public readonly List<byte> ElemDoc = new();      // → Docs indeksi (0 = ana model, sonrası bağlı modeller)
     public readonly List<object> Docs = new();       // Revit belgeleri (pencere türünü bilmez; Revit tarafı kullanır)
     public readonly List<string> ElemTag = new();    // anlık etiket: kısa boyut ("300x100", "Ø50") — yoksa ""
 
-    public int CatIndex(string name)
+    public int CatIndex(string name, byte disc = 0)
     {
         int i = CatNames.IndexOf(name);
-        if (i < 0) { CatNames.Add(name); i = CatNames.Count - 1; }
+        if (i < 0) { CatNames.Add(name); CatDisc.Add(disc); i = CatNames.Count - 1; }
         return i;
     }
 

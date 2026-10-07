@@ -223,7 +223,7 @@ sealed class DocPass
 
             long ti = Stopwatch.GetTimestamp();
             scene.Labels.Add(Label(e, cat));
-            scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name));
+            scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name, Discipline(bic)));
             scene.ElemRevitId.Add(e.Id.Value);
             scene.ElemDoc.Add(_docIdx);
             scene.ElemTag.Add(Tag(e));
@@ -511,6 +511,23 @@ sealed class DocPass
             return n0.DotProduct(n1) > SmoothEdgeCos;
         }
         catch { return false; }
+    }
+
+    /// <summary>Filtre disiplini (0 Mimari, 1 Statik, 2 Mekanik, 3 Elektrik). Önce bilinen kümeler, sonra enum adına göre
+    /// (sürümler arası eklenen kategoriler de — ör. Plumbing Equipment — doğru başlığa düşsün); kalanlar Mimari.</summary>
+    static byte Discipline(BuiltInCategory bic)
+    {
+        if (Structure.Contains(bic)) return 1;
+        if (ContainmentCats.Contains(bic) || ElectricalCats.Contains(bic)) return 3;
+        if (PipeCats.Contains(bic) || DuctCats.Contains(bic) || MechEquipCats.Contains(bic)) return 2;
+        var n = bic.ToString();
+        if (n.Contains("Struct") || n.Contains("Rebar") || n.Contains("Truss") || n.Contains("Stiffener")) return 1;
+        if (n.Contains("Electric") || n.Contains("Lighting") || n.Contains("CableTray") || n.Contains("Conduit") || n.Contains("Wire")
+            || n.Contains("FireAlarm") || n.Contains("Data") || n.Contains("Communication") || n.Contains("Security")
+            || n.Contains("NurseCall") || n.Contains("Telephone") || n.Contains("Audio") || n.Contains("Switch")) return 3;
+        if (n.Contains("Pipe") || n.Contains("Duct") || n.Contains("Plumbing") || n.Contains("Mechanical") || n.Contains("Sprinkler")
+            || n.Contains("HVAC") || n.Contains("Fabrication") || n.Contains("MEPAncillar") || n.Contains("Hanger")) return 2;
+        return 0;
     }
 
     /// <summary>Anlık etiket için kısa boyut: Revit'in hesapladığı boyut (boru/kanal/tava/conduit ve fittingleri),

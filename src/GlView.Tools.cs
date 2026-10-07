@@ -16,13 +16,13 @@ sealed unsafe partial class GlView
     readonly HashSet<string> _hiddenCats = new(StringComparer.CurrentCultureIgnoreCase);
 
     /// <summary>Sahnedeki kategoriler ve eleman sayıları (ada göre sıralı).</summary>
-    public List<(string name, int count)> Categories()
+    public List<(string name, int count, int disc)> Categories()
     {
-        var res = new List<(string, int)>();
+        var res = new List<(string, int, int)>();
         if (_scene == null) return res;
         var cnt = new int[_scene.CatNames.Count];
         foreach (var c in _scene.ElemCat) if (c < cnt.Length) cnt[c]++;
-        for (int i = 0; i < cnt.Length; i++) if (cnt[i] > 0) res.Add((_scene.CatNames[i], cnt[i]));
+        for (int i = 0; i < cnt.Length; i++) if (cnt[i] > 0) res.Add((_scene.CatNames[i], cnt[i], i < _scene.CatDisc.Count ? _scene.CatDisc[i] : 0));
         res.Sort((a, b) => string.Compare(a.Item1, b.Item1, StringComparison.CurrentCultureIgnoreCase));
         return res;
     }
