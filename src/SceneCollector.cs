@@ -13,25 +13,64 @@ namespace Smart3DView;
 /// küçültülüp taşınabilir). Her elemana sistem rengi, çakışma grubu ve connector bağlantıları eklenir.</summary>
 static class SceneCollector
 {
-    public static SceneData Collect(Document doc, View? activeView, ClipBox box)
+    /// <param name="prev">Kutu büyütme: verilirse onun elemanları korunur, Revit'ten yalnız henüz okunmamış elemanlar
+    /// istenir (eskiden her büyütmede tüm alan baştan okunuyordu — kullanıcı raporu 2026-10-07 "biraz fazla uzun sürüyor").</param>
+    public static SceneData Collect(Document doc, View? activeView, ClipBox box, SceneData? prev = null)
     {
-        var scene = new SceneData { Source = box.Source };
+        var scene = prev?.CloneForAppend() ?? new SceneData();
+        scene.Source = box.Source;
         var ctx = new Ctx(scene, box.Min, box.Max);
         var frameInv = box.Frame.Inverse;
         // 3B görünümde kullanıcının gizlediği elemanlar/kategoriler görünmesin; planda ise tavan vb. kesit üstü
         // elemanlar "görünür" sayılmadığı için tüm belge taranır.
         ElementId? viewId = activeView is View3D v3 && !v3.IsTemplate ? activeView.Id : null;
 
+        // Okunacak belgeler: ana model + bağlı model örnekleri (aynı model iki kez bağlıysa iki geçiş).
+        var passes = new List<(long key, Document d, Transform toLocal, RevitLinkInstance? li)> { (-1, doc, frameInv, null) };
+        var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
+        foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
+            if (li.GetLinkDocument() is { } ld) passes.Add((li.Id.Value, ld, frameInv.Multiply(li.GetTotalTransform()), li));
+
+        // Her geçişte: sahnedeki belge sırası, zaten yüklü elemanlar (eklemede atlanır) ve henüz okunmamış tavalar.
+        var idx = new byte[passes.Count];
+        var existing = new Dictionary<long, uint>?[passes.Count];
+        var trays = new List<Element>[passes.Count];
+        for (int i = 0; i < passes.Count; i++)
+        {
+            var (key, d, toLocal, _) = passes[i];
+            int di = -1;
+            for (int k = 0; k < scene.Docs.Count && k < scene.DocKeys.Count; k++)
+                if (scene.DocKeys[k] == key && ReferenceEquals(scene.Docs[k], d)) { di = k; break; }
+            if (di < 0)
+            {
+                if (scene.Docs.Count > 250) { idx[i] = 255; trays[i] = new(); continue; }
+                di = scene.Docs.Count;
+                scene.Docs.Add(d);
+                scene.DocKeys.Add(key);
+                scene.DocNames.Add(d.Title);
+            }
+            idx[i] = (byte)di;
+            if (prev != null)
+            {
+                var map = new Dictionary<long, uint>();
+                for (int j = 0; j < scene.ElemDoc.Count; j++)
+                    if (scene.ElemDoc[j] == di) map[scene.ElemRevitId[j]] = (uint)(j + 1);
+                existing[i] = map;
+            }
+            trays[i] = i == 0 ? TraysInBox(ctx, d, toLocal, existing[i]) : new();   // Fine tava yalnız ana modelde
+        }
+
         // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
         // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
         // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
         // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) eski davranış.
+        // Bağlı modellerin tavaları eski yolla okunur: bağlantının tüm geometrisini Fine görünümden alıp tavalara
+        // eşleştirmek büyük modelde Revit'i dakikalarca kilitledi (1.12.0 denemesi, 2026-10-07) — kaldırıldı.
         Transaction? tmp = null;
         Options? trayOpt = null;
         try
         {
-            if (!doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument &&
-                new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_CableTray).WhereElementIsNotElementType().GetElementCount() > 0)
+            if (trays[0]?.Count > 0 && idx[0] != 255 && !doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument)
             {
                 ViewFamilyType? vft = null;
                 foreach (ViewFamilyType t in new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)))
@@ -54,17 +93,12 @@ static class SceneCollector
 
         try
         {
-            scene.Docs.Add(doc);
-            new DocPass(ctx, doc, frameInv, viewId, null, 0, trayOpt).Run();
-
-            var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
-            foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
+            for (int i = 0; i < passes.Count; i++)
             {
-                var ld = li.GetLinkDocument();
-                if (ld == null || scene.Docs.Count > 250) continue;
-                byte di = (byte)scene.Docs.Count;
-                scene.Docs.Add(ld);
-                new DocPass(ctx, ld, frameInv.Multiply(li.GetTotalTransform()), null, ld.Title, di, null).Run();
+                if (idx[i] == 255) continue;
+                var (_, d, toLocal, li) = passes[i];
+                new DocPass(ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, idx[i],
+                    li == null && trays[i].Count > 0 ? trayOpt : null, existing[i]).Run();
             }
         }
         finally
@@ -78,10 +112,38 @@ static class SceneCollector
         scene.BoxMin = new[] { box.Min.X, box.Min.Y, box.Min.Z };
         scene.BoxMax = new[] { box.Max.X, box.Max.Y, box.Max.Z };
         scene.Seconds = ctx.Watch.Elapsed.TotalSeconds;
+        scene.GeoSeconds = ctx.GeometrySeconds; scene.TriSeconds = ctx.TriSeconds + ctx.EdgeSeconds; scene.InfoSeconds = ctx.InfoSeconds;
         scene.Timing = L.T(
             $"Revit geometri {ctx.GeometrySeconds:0.00} sn · üçgenleme {ctx.TriSeconds:0.00} sn · kenar {ctx.EdgeSeconds:0.00} sn · sistem bilgisi {ctx.InfoSeconds:0.00} sn · toplam {scene.Seconds:0.00} sn",
             $"Revit geometry {ctx.GeometrySeconds:0.00} s · triangulation {ctx.TriSeconds:0.00} s · edges {ctx.EdgeSeconds:0.00} s · system info {ctx.InfoSeconds:0.00} s · total {scene.Seconds:0.00} s");
         return scene;
+    }
+
+    /// <summary>Kutunun (yerel) belge koordinatlarındaki eksen hizalı sınırı.</summary>
+    internal static Outline DocOutline(Ctx c, Transform toDoc)
+    {
+        double x0 = double.MaxValue, y0 = double.MaxValue, z0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue, z1 = double.MinValue;
+        foreach (var p0 in BoxResolver.Corners(c.Min, c.Max))
+        {
+            var p = toDoc.OfPoint(p0);
+            x0 = Math.Min(x0, p.X); y0 = Math.Min(y0, p.Y); z0 = Math.Min(z0, p.Z);
+            x1 = Math.Max(x1, p.X); y1 = Math.Max(y1, p.Y); z1 = Math.Max(z1, p.Z);
+        }
+        return new Outline(new XYZ(x0, y0, z0), new XYZ(x1, y1, z1));
+    }
+
+    /// <summary>Kutuya giren ve henüz sahnede olmayan düz kablo tavaları.</summary>
+    static List<Element> TraysInBox(Ctx c, Document d, Transform toLocal, Dictionary<long, uint>? existing)
+    {
+        var res = new List<Element>();
+        try
+        {
+            foreach (var e in new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_CableTray).WhereElementIsNotElementType()
+                         .WherePasses(new BoundingBoxIntersectsFilter(DocOutline(c, toLocal.Inverse))))
+                if (existing == null || !existing.ContainsKey(e.Id.Value)) res.Add(e);
+        }
+        catch { }
+        return res;
     }
 
     internal sealed class Ctx
@@ -165,6 +227,7 @@ sealed class DocPass
     readonly string? _linkName;
     readonly byte _docIdx;
     readonly Options? _trayOpt;   // kablo tavaları için geçici Fine görünümlü seçenekler (yalnız ana model)
+    readonly Dictionary<long, uint>? _existing;            // kutu büyütme: zaten sahnede olanlar (Revit no → sahne no)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();
     readonly Dictionary<long, bool> _skipStyle = new();
@@ -172,16 +235,17 @@ sealed class DocPass
     // Bu belgedeki Revit eleman no → sahne no; geçiş sonunda izolasyon-taşıyıcı ve connector ilişkileri buna çevrilir.
     readonly Dictionary<long, uint> _sceneId = new();
     readonly List<(uint id, long host)> _pendingHost = new();
-    readonly List<(uint id, long other)> _pendingConn = new();
     readonly double _x0, _y0, _z0, _x1, _y1, _z1; // kutu (yerel)
     Tone _tone;
     uint _id;
     bool _emitted;
 
-    public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName, byte docIdx, Options? trayOpt)
+    public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName, byte docIdx, Options? trayOpt,
+        Dictionary<long, uint>? existing = null)
     {
         _c = c; _doc = doc; _toLocal = docToLocal; _toDoc = docToLocal.Inverse; _viewId = viewId; _linkName = linkName;
-        _docIdx = docIdx; _trayOpt = trayOpt;
+        _docIdx = docIdx; _trayOpt = trayOpt; _existing = existing;
+        if (existing != null) foreach (var kv in existing) _sceneId[kv.Key] = kv.Value;   // yeni elemanların bağlantıları eskilere de çözülsün
         _x0 = c.Min.X; _y0 = c.Min.Y; _z0 = c.Min.Z; _x1 = c.Max.X; _y1 = c.Max.Y; _z1 = c.Max.Z;
     }
 
@@ -206,6 +270,7 @@ sealed class DocPass
             if (cat == null || cat.CategoryType != CategoryType.Model) continue;
             var bic = cat.BuiltInCategory;
             if (Excluded.Contains(bic)) continue;
+            if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
             GeometryElement? ge;
             long tg = Stopwatch.GetTimestamp();
             try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
@@ -226,21 +291,85 @@ sealed class DocPass
             scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name, Discipline(bic)));
             scene.ElemRevitId.Add(e.Id.Value);
             scene.ElemDoc.Add(_docIdx);
-            scene.ElemTag.Add(Tag(e));
-            var (color, group, host) = Classify(e, bic);
+            var (color, group, host) = QuickClassify(e, bic);
+            scene.ElemTag.Add("");
             scene.ElemColor.Add((byte)color);
+            scene.ElemDetail.Add(DetailOf(bic, color, group));
             scene.ElemGroup.Add(group);
             scene.ElemCanon.Add(_id);
             _sceneId[e.Id.Value] = _id;
             if (host != null) _pendingHost.Add((_id, host.Value));
-            CollectConnections(e);
             _c.InfoSeconds += SceneCollector.Ctx.Since(ti);
         }
 
         foreach (var (id, host) in _pendingHost)
             if (_sceneId.TryGetValue(host, out var h)) scene.ElemCanon[(int)id - 1] = h;
-        foreach (var (id, other) in _pendingConn)
-            if (_sceneId.TryGetValue(other, out var o) && o != id) scene.Connected.Add(SceneData.PairKey(id, o));
+    }
+
+    // ---- ikinci adım: eleman bilgisi --------------------------------------------------------------------------------
+
+    /// <summary>Hızlı sınıflandırma: boru/kanal sistem tipine bakılmaz — parametre okuması kaldırıldı (kullanıcı isteği 2026-10-07, büyütmede Revit takılıyordu). Sprinkler yangın, gerisi kategori.</summary>
+    (SysColor color, int group, long? host) QuickClassify(Element e, BuiltInCategory bic)
+    {
+        long? host = null;
+        if (e is InsulationLiningBase ins && _doc.GetElement(ins.HostElementId) is { } h)
+        {
+            host = h.Id.Value;
+            bic = h.Category?.BuiltInCategory ?? bic;
+        }
+        if (bic == BuiltInCategory.OST_Sprinklers) return (SysColor.Fire, ClashGroup.PipeFire, host);
+        if (PipeCats.Contains(bic)) return (SysColor.None, ClashGroup.PipeOther, host);
+        if (DuctCats.Contains(bic)) return (SysColor.None, ClashGroup.DuctOther, host);
+        var (c, g, _) = Classify(e, bic);
+        return (c, g, host);
+    }
+
+    // ---- "Detaylı" ton rengi ---------------------------------------------------------------------------------------
+
+    /// <summary>Tanınan tesisat sistemi rengi önce gelir; yoksa tesisat grubu, sonra kategori.</summary>
+    static byte DetailOf(BuiltInCategory bic, SysColor color, int group)
+    {
+        if (color != SysColor.None) return (byte)color;
+        switch (group)
+        {
+            case ClashGroup.PipeHeating: return Detail.PipeHeating;
+            case ClashGroup.PipeDomestic: return Detail.PipeDomestic;
+            case ClashGroup.PipeDrainage: return Detail.PipeDrainage;
+            case ClashGroup.PipeCooling: case ClashGroup.PipeFire: case ClashGroup.PipeOther: return Detail.PipeOther;
+            case ClashGroup.DuctSupply: case ClashGroup.DuctReturn: case ClashGroup.DuctOther: return Detail.DuctOther;
+            case ClashGroup.Containment: return Detail.Metal;
+        }
+        switch (bic)
+        {
+            case BuiltInCategory.OST_Walls: case BuiltInCategory.OST_StackedWalls: case BuiltInCategory.OST_Cornices:
+            case BuiltInCategory.OST_Reveals: case BuiltInCategory.OST_Parts:
+                return Detail.Wall;
+            case BuiltInCategory.OST_Floors: case BuiltInCategory.OST_Roofs: case BuiltInCategory.OST_RoofSoffit:
+            case BuiltInCategory.OST_Fascia: case BuiltInCategory.OST_Gutter: case BuiltInCategory.OST_EdgeSlab: case BuiltInCategory.OST_Ramps:
+                return Detail.Floor;
+            case BuiltInCategory.OST_Ceilings: return Detail.Ceiling;
+            case BuiltInCategory.OST_Doors: return Detail.Door;
+            case BuiltInCategory.OST_Windows: case BuiltInCategory.OST_CurtainWallMullions: case BuiltInCategory.OST_CurtainWallPanels:
+            case BuiltInCategory.OST_CurtaSystem:
+                return Detail.Frame;
+            case BuiltInCategory.OST_StructuralColumns: case BuiltInCategory.OST_StructuralFraming: case BuiltInCategory.OST_StructuralFoundation:
+            case BuiltInCategory.OST_Columns: case BuiltInCategory.OST_StructuralTruss: case BuiltInCategory.OST_StructConnections:
+                return Detail.Concrete;
+            case BuiltInCategory.OST_Stairs: case BuiltInCategory.OST_StairsRuns: case BuiltInCategory.OST_StairsLandings:
+            case BuiltInCategory.OST_StairsRailing: case BuiltInCategory.OST_Railings: case BuiltInCategory.OST_RailingTopRail:
+            case BuiltInCategory.OST_RailingHandRail:
+                return Detail.Stair;
+            case BuiltInCategory.OST_Furniture: case BuiltInCategory.OST_FurnitureSystems: case BuiltInCategory.OST_Casework:
+            case BuiltInCategory.OST_SpecialityEquipment: case BuiltInCategory.OST_Entourage: case BuiltInCategory.OST_Planting:
+                return Detail.Furniture;
+            case BuiltInCategory.OST_MechanicalEquipment: return Detail.MechEquipment;
+            case BuiltInCategory.OST_PlumbingFixtures: return Detail.Sanitary;
+            case BuiltInCategory.OST_ElectricalEquipment: return Detail.ElecEquipment;
+            case BuiltInCategory.OST_LightingFixtures: case BuiltInCategory.OST_LightingDevices: return Detail.Lighting;
+            case BuiltInCategory.OST_Topography: case BuiltInCategory.OST_Toposolid: case BuiltInCategory.OST_Site:
+                return Detail.Site;
+        }
+        return ElectricalCats.Contains(bic) ? Detail.Devices : Detail.General;
     }
 
     // ---- sistem sınıflandırması ----------------------------------------------------------------------------------
@@ -358,25 +487,6 @@ sealed class DocPass
         if (Has(name, "return", "exhaust", "extract", "emiş", "emis", "dönüş", "donus", "egzoz", "atık", "atik"))
             return (SysColor.Return, ClashGroup.DuctReturn);
         return (SysColor.None, ClashGroup.DuctOther);
-    }
-
-    void CollectConnections(Element e)
-    {
-        var set = Connectors(e);
-        if (set == null) return;
-        foreach (Connector c in set)
-        {
-            try
-            {
-                if (!c.IsConnected) continue;
-                foreach (Connector r in c.AllRefs)
-                {
-                    var o = r.Owner;
-                    if (o != null && o.Id != e.Id) _pendingConn.Add((_id, o.Id.Value));
-                }
-            }
-            catch { /* bazı connector türleri (mantıksal) AllRefs desteklemez */ }
-        }
     }
 
     // ---- geometri ------------------------------------------------------------------------------------------------
@@ -532,28 +642,6 @@ sealed class DocPass
 
     /// <summary>Anlık etiket için kısa boyut: Revit'in hesapladığı boyut (boru/kanal/tava/conduit ve fittingleri),
     /// yoksa genişlik × yükseklik. Proje birimiyle biçimli (AsValueString). Bulunamazsa "".</summary>
-    static string Tag(Element e)
-    {
-        try
-        {
-            var s = e.get_Parameter(BuiltInParameter.RBS_CALCULATED_SIZE)?.AsString();
-            if (!string.IsNullOrWhiteSpace(s)) return s.Trim();
-            string? w = e.get_Parameter(BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM)?.AsValueString()
-                        ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_WIDTH_PARAM)?.AsValueString()
-                        ?? e.LookupParameter("Width")?.AsValueString() ?? e.LookupParameter("Genişlik")?.AsValueString();
-            string? h = e.get_Parameter(BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM)?.AsValueString()
-                        ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_HEIGHT_PARAM)?.AsValueString()
-                        ?? e.LookupParameter("Height")?.AsValueString() ?? e.LookupParameter("Yükseklik")?.AsValueString();
-            if (!string.IsNullOrEmpty(w) && !string.IsNullOrEmpty(h)) return w + " × " + h;
-            var d = e.get_Parameter(BuiltInParameter.RBS_PIPE_DIAMETER_PARAM)?.AsValueString()
-                    ?? e.get_Parameter(BuiltInParameter.RBS_CURVE_DIAMETER_PARAM)?.AsValueString()
-                    ?? e.get_Parameter(BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM)?.AsValueString();
-            if (!string.IsNullOrEmpty(d)) return "Ø" + d;
-            return w ?? "";
-        }
-        catch { return ""; }
-    }
-
     string Label(Element e, Category cat)
     {
         string type = _doc.GetElement(e.GetTypeId()) is ElementType et

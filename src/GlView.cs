@@ -29,6 +29,24 @@ sealed unsafe partial class GlView : HwndHost
         0.18f, 0.68f, 0.30f,
     };
 
+    // "Detaylı" ton: her eleman türü kendi renginde (Detail sırası). Tesisat sistem renkleri "Renkli" ile aynı.
+    static readonly float[] DetailColors = Rgb(
+        0xCFCCC6,                                   // genel
+        0x2E6FE0, 0xE02323, 0xDB33C7, 0x2EAD4C,     // soğutma, yangın, üfleme, dönüş/egzoz
+        0xE2702E, 0x23A6C9, 0x8B6B4E, 0x4FB0A0,     // ısıtma, kullanım suyu, pis su, diğer boru
+        0xA9BBCB, 0x9AA3AD,                         // kanal (galvaniz), tava/conduit (metal)
+        0xC6C4BE, 0xD3CFC6, 0xEAE8E3, 0xF6F4EE,     // duvar, döşeme/çatı, asma tavan, kapı
+        0x7F8A95, 0xB8B0A3, 0xC8B59A, 0xC29B70,     // pencere/doğrama, betonarme, merdiven/korkuluk, mobilya
+        0x8E7CC3, 0xE3A33A, 0xF0D96A, 0xD98C5F,     // mekanik cihaz, elektrik pano/cihaz, aydınlatma, zayıf akım/yangın algılama
+        0xF5F7F9, 0xA6B98A);                        // vitrifiye, arazi
+
+    static float[] Rgb(params int[] c)
+    {
+        var a = new float[c.Length * 3];
+        for (int i = 0; i < c.Length; i++) { a[3 * i] = ((c[i] >> 16) & 255) / 255f; a[3 * i + 1] = ((c[i] >> 8) & 255) / 255f; a[3 * i + 2] = (c[i] & 255) / 255f; }
+        return a;
+    }
+
     IntPtr _hwnd, _hdc, _ctx;
     int _w = 1, _h = 1;
     public string? Error { get; private set; }
@@ -61,6 +79,7 @@ sealed unsafe partial class GlView : HwndHost
     // kesit kutusu: geçerli (kullanıcının düzenlediği) ve Revit'ten okunan
     readonly double[] _bMin = { -1, -1, -1 }, _bMax = { 1, 1, 1 };
     readonly double[] _cMin = { -1, -1, -1 }, _cMax = { 1, 1, 1 };
+    readonly double[] _homeMin = { -1, -1, -1 }, _homeMax = { 1, 1, 1 };   // ilk açılan kutu (↺ buna döner; okunan alan ön yüklemeyle daha büyük)
     public double[] BoxMin => (double[])_bMin.Clone();
     public double[] BoxMax => (double[])_bMax.Clone();
     /// <summary>Revit'ten okunmuş alan (kutu küçültülse de bu kadarı yüklü).</summary>
@@ -74,7 +93,7 @@ sealed unsafe partial class GlView : HwndHost
 
     // shader programları ve uniform konumları
     uint _pSurf, _pEdge, _pBg, _pPick, _pOver;
-    int sPass, sMvp, sTone, sCam, sKey, sFill, sSky, sLight, sSel, sSelColor, sGlassA, sBoxMin, sBoxMax, sState, sColored, sClash, sClass, sClashColor, sClashColor2, sFade;
+    int sPass, sMvp, sTone, sCam, sKey, sFill, sSky, sLight, sSel, sSelColor, sGlassA, sBoxMin, sBoxMax, sState, sColored, sClash, sClass, sClashColor, sClashColor2, sFade, sDetail;
     int eMvp, eColor, eSel, eSelColor, eBoxMin, eBoxMax, eState, eClash, eFade, bTop, bBot, pkMvp, pkBoxMin, pkBoxMax, pkState, oMvp, oPoint, oSize;
 
     // çerçeve tamponları: MSAA (kenar yumuşatma) + seçim (R32UI) + düşük çözünürlük
@@ -127,7 +146,11 @@ sealed unsafe partial class GlView : HwndHost
         _clashMode = false;
         Array.Copy(scene.BoxMin, _cMin, 3);
         Array.Copy(scene.BoxMax, _cMax, 3);
-        if (!keepView) { Array.Copy(scene.BoxMin, _bMin, 3); Array.Copy(scene.BoxMax, _bMax, 3); }
+        if (!keepView)
+        {
+            Array.Copy(scene.ViewMin ?? scene.BoxMin, _bMin, 3); Array.Copy(scene.ViewMax ?? scene.BoxMax, _bMax, 3);
+            Array.Copy(_bMin, _homeMin, 3); Array.Copy(_bMax, _homeMax, 3);
+        }
         ComputeBounds(scene);
         BuildState();
         _fitPending = !keepView && _w <= 1;
@@ -172,8 +195,8 @@ sealed unsafe partial class GlView : HwndHost
 
     public void ResetBox()
     {
-        Array.Copy(_cMin, _bMin, 3);
-        Array.Copy(_cMax, _bMax, 3);
+        Array.Copy(_homeMin, _bMin, 3);
+        Array.Copy(_homeMax, _bMax, 3);
         UpdateCenter();
         Invalidate();
         BoxEdited?.Invoke();
@@ -301,7 +324,7 @@ in vec3 vPos; in vec3 vNrm; flat in int vTone; flat in uint vId;
 uniform vec3 uTone[6]; uniform vec3 uCam; uniform vec3 uKey; uniform vec3 uFill; uniform vec3 uSky;
 uniform vec4 uLight; uniform uint uSel; uniform vec3 uSelColor; uniform float uGlassA;
 uniform vec3 uBoxMin; uniform vec3 uBoxMax; uniform mat4 uMvp;
-uniform usampler2D uState; uniform int uColored; uniform int uClash; uniform vec3 uClass[5];
+uniform usampler2D uState; uniform int uColored; uniform int uClash; uniform vec3 uClass[5]; uniform vec3 uDetail[25];
 uniform vec3 uClashColor; uniform vec3 uClashColor2; uniform vec3 uFade; uniform int uPass;
 out vec4 o;
 void main(){
@@ -309,10 +332,12 @@ void main(){
   uvec2 st = texelFetch(uState, ivec2(int(vId % 4096u), int(vId / 4096u)), 0).rg;
   if ((st.r & 128u) != 0u) discard;   // filtreyle gizlenen kategori
   uint cls = st.r & 127u;
-  bool clash = uClash != 0 && st.g != 0u;
-  vec3 clashC = st.g == 2u ? uClashColor2 : uClashColor;   // çakışmanın iki tarafı: kırmızı / mavi
+  uint det = min(st.g >> 2, 24u), ck = st.g & 3u;   // g: alt 2 bit çakışma tarafı, üst 6 bit detay rengi
+  bool clash = uClash != 0 && ck != 0u;
+  vec3 clashC = ck == 2u ? uClashColor2 : uClashColor;   // çakışmanın iki tarafı: kırmızı / mavi
   vec3 base = uTone[vTone];
-  if (uColored != 0 && cls != 0u && vTone != 4) base = uClass[cls];
+  if (uColored == 1 && cls != 0u && vTone != 4) base = uClass[cls];
+  if (uColored == 2 && vTone != 4) base = uDetail[det];
   if (clash) base = clashC;
   vec3 c;
   // Katının içi mi görünüyor? Ekrandaki gerçek yüzey yönü (kameraya çevrilmiş) ile Revit'in dışa bakan normali
@@ -324,7 +349,8 @@ void main(){
   if (inside != (uPass == 1)) discard;
   if (inside) {
     vec3 cut = uTone[5];
-    if (uColored != 0 && cls != 0u) cut = uClass[cls] * 0.6;
+    if (uColored == 1 && cls != 0u) cut = uClass[cls] * 0.6;
+    if (uColored == 2) cut = uDetail[det] * 0.6;
     if (clash) cut = clashC * 0.75;
     c = cut;
   } else {
@@ -335,6 +361,10 @@ void main(){
             + uLight.z * max(dot(n, -uFill), 0.0)
             + uLight.w * max(dot(n, -uSky), 0.0);
     c = base * (clash ? max(d, 0.55) : d);
+    if (uColored == 2 && !clash && (det == 9u || det == 10u || det == 15u)) {   // metal: tava, kanal, doğrama — parlama
+      vec3 h = normalize(normalize(uCam - vPos) - uKey);
+      c += vec3(0.38) * pow(max(dot(n, h), 0.0), 28.0);
+    }
   }
   if (uClash != 0 && !clash) c = mix(c, uFade, 0.72);
   if (uSel != 0u && vId == uSel && !clash) c = mix(c, uSelColor, 0.5);   // çakışan seçili: kırmızı kalsın (mavi ortaklarıyla karışmasın)
@@ -358,7 +388,8 @@ void main(){
   vec3 c = uColor;
   uvec2 st = texelFetch(uState, ivec2(int(vId % 4096u), int(vId / 4096u)), 0).rg;
   if ((st.r & 128u) != 0u) discard;
-  if (uClash != 0) c = st.g == 1u ? vec3(0.45, 0.0, 0.0) : st.g == 2u ? vec3(0.0, 0.12, 0.5) : mix(uColor, uFade, 0.75);
+  uint ck = st.g & 3u;
+  if (uClash != 0) c = ck == 1u ? vec3(0.45, 0.0, 0.0) : ck == 2u ? vec3(0.0, 0.12, 0.5) : mix(uColor, uFade, 0.75);
   if (uSel != 0u && vId == uSel) c = uSelColor;
   o = vec4(c, 1.0);
 }";
@@ -437,7 +468,7 @@ void main(){
         sLight = GL.Uniform(_pSurf, "uLight"); sSel = GL.Uniform(_pSurf, "uSel"); sSelColor = GL.Uniform(_pSurf, "uSelColor");
         sGlassA = GL.Uniform(_pSurf, "uGlassA"); sBoxMin = GL.Uniform(_pSurf, "uBoxMin"); sBoxMax = GL.Uniform(_pSurf, "uBoxMax");
         sState = GL.Uniform(_pSurf, "uState"); sColored = GL.Uniform(_pSurf, "uColored"); sClash = GL.Uniform(_pSurf, "uClash");
-        sClass = GL.Uniform(_pSurf, "uClass"); sClashColor = GL.Uniform(_pSurf, "uClashColor"); sClashColor2 = GL.Uniform(_pSurf, "uClashColor2"); sFade = GL.Uniform(_pSurf, "uFade"); sPass = GL.Uniform(_pSurf, "uPass");
+        sClass = GL.Uniform(_pSurf, "uClass"); sDetail = GL.Uniform(_pSurf, "uDetail"); sClashColor = GL.Uniform(_pSurf, "uClashColor"); sClashColor2 = GL.Uniform(_pSurf, "uClashColor2"); sFade = GL.Uniform(_pSurf, "uFade"); sPass = GL.Uniform(_pSurf, "uPass");
         _pEdge = GL.Program(EdgeVs, EdgeFs);
         eMvp = GL.Uniform(_pEdge, "uMvp"); eColor = GL.Uniform(_pEdge, "uColor"); eSel = GL.Uniform(_pEdge, "uSel");
         eSelColor = GL.Uniform(_pEdge, "uSelColor"); eBoxMin = GL.Uniform(_pEdge, "uBoxMin"); eBoxMax = GL.Uniform(_pEdge, "uBoxMax");
@@ -506,6 +537,7 @@ void main(){
         _stateH = (n + StateTexWidth - 1) / StateTexWidth;
         _state = new byte[StateTexWidth * _stateH * 2];
         for (int i = 0; i < s.ElemColor.Count; i++) _state[2 * (i + 1)] = s.ElemColor[i];
+        for (int i = 0; i < s.ElemDetail.Count; i++) _state[2 * (i + 1) + 1] = (byte)(Math.Min((int)s.ElemDetail[i], Detail.Count - 1) << 2);
         _clashRes = null;
         ApplyHiddenBits();
     }
@@ -735,6 +767,7 @@ void main(){
         var tones = ToneColors();
         fixed (float* t = tones) GL.Uniform3fv(sTone, 6, t);
         fixed (float* t = ClassColors) GL.Uniform3fv(sClass, 5, t);
+        fixed (float* t = DetailColors) GL.Uniform3fv(sDetail, Detail.Count, t);
         GL.Uniform3f(sCam, (float)_pos.X, (float)_pos.Y, (float)_pos.Z);
         UV(sKey, key); UV(sFill, fill); UV(sSky, sky);
         GL.Uniform4f(sLight, (float)_pal.Ambient, (float)_pal.Key, (float)_pal.Fill, (float)_pal.Sky);
@@ -743,7 +776,7 @@ void main(){
         GL.Uniform1f(sGlassA, 0.32f);
         UBox(sBoxMin, sBoxMax);
         GL.Uniform1i(sState, 0);
-        GL.Uniform1i(sColored, _pal.Colored ? 1 : 0);
+        GL.Uniform1i(sColored, _pal.Detailed ? 2 : _pal.Colored ? 1 : 0);
         GL.Uniform1i(sClash, _clashMode ? 1 : 0);
         GL.Uniform3f(sClashColor, 1.0f, 0.08f, 0.08f);
         GL.Uniform3f(sClashColor2, 0.10f, 0.40f, 1.0f);
@@ -801,7 +834,7 @@ void main(){
 
         if (overlay && _boxMode) DrawBoxOverlay(mvp);
         DrawMeasureOverlay(mvp, overlay);
-        if (overlay) { DrawHoverTag(); DrawViewCube(); }   // görüntü alırken (overlay=false) küp ve etiket çizilmez
+        if (overlay) { DrawHoverTag(); DrawViewCube(); DrawModelList(); }   // görüntü alırken (overlay=false) küp ve etiket çizilmez
     }
 
     bool BoxCutsGeometry()
@@ -1273,7 +1306,7 @@ void main(){
                     handled = true;
                     return (IntPtr)1;
                 }
-                if ((_cubeHover != null || HomeHit(_lastMouse)) && Win32.LoWord(lParam) == 1)   // küp: el imleci
+                if ((_cubeHover != null || HomeHit(_lastMouse) || _modelHover != null) && Win32.LoWord(lParam) == 1)   // küp, model listesi: el imleci
                 {
                     Win32.SetCursor(Win32.LoadCursor(IntPtr.Zero, (IntPtr)32649));
                     handled = true;
@@ -1314,6 +1347,7 @@ void main(){
             {
                 Win32.SetFocus(hwnd);
                 _down = Pt();
+                if (ModelHit(_down) is { } mn) { ModelToggled?.Invoke(mn); handled = true; return IntPtr.Zero; }
                 if (CubeHit(_down) is { } cdir) { CubeClick(cdir); handled = true; return IntPtr.Zero; }
                 if (HomeHit(_down)) { FitAll(IsoLook); Interact(); handled = true; return IntPtr.Zero; }
                 int f = HandleAt(_down);
@@ -1341,6 +1375,7 @@ void main(){
             case Win32.WM_LBUTTONDBLCLK:
             {
                 if (CubeHit(Pt()) is { } cdir2) { CubeClick(cdir2); handled = true; return IntPtr.Zero; }
+                if (ModelHit(Pt()) != null) { handled = true; return IntPtr.Zero; }
                 if (HomeHit(Pt())) { handled = true; return IntPtr.Zero; }
                 if (HandleAt(Pt()) >= 0) { handled = true; return IntPtr.Zero; }
                 if (_measureMode) { _down = Pt(); _leftDown = true; handled = true; return IntPtr.Zero; }   // ölçüde çift tık = iki ayrı tık
@@ -1388,11 +1423,13 @@ void main(){
                 else
                 {
                     _lastMouse = p;
+                    var mh = ModelHit(p);
+                    if (mh != _modelHover) { _modelHover = mh; Invalidate(); }
                     var ch = CubeHit(p);
                     if (ch != _cubeHover) { _cubeHover = ch; Invalidate(); }
                     int h = _boxMode && ch == null ? HandleAt(p) : -1;
                     if (h != _hover) { _hover = h; Invalidate(); }
-                    if (ch == null && h < 0)
+                    if (ch == null && h < 0 && mh == null)
                     {
                         if (_measureMode) MeasureHover(p);
                         else if (_tagMode) TagHover(p);

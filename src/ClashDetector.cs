@@ -23,7 +23,9 @@ static class ClashDetector
     const double Tol = 0.003; // ft ≈ 1 mm: bu kadar yakın yüzeyler "dokunuyor" sayılır
 
     /// <param name="hidden">filtreyle gizlenen elemanlar (indeks = id) — denetime girmez</param>
-    public static ClashResult Run(SceneData s, double[] boxMin, double[] boxMax, bool[]? hidden = null)
+    /// <param name="tol">tolerans (ft): 0 = dokunan yüzeyler de çakışır; &gt; 0 = yalnız birbirinin içine bu kadardan derin
+    /// giren elemanlar (yüzeye oturan cihaz, duvara yaslanan pano çakışma sayılmaz — kullanıcı isteği 2026-10-07).</param>
+    public static ClashResult Run(SceneData s, double[] boxMin, double[] boxMax, bool[]? hidden = null, double tol = 0)
     {
         var sw = Stopwatch.StartNew();
         var res = new ClashResult();
@@ -82,6 +84,7 @@ static class ClashDetector
         }
         cand.Sort((a, b) => min[a * 3].CompareTo(min[b * 3]));
 
+        double e = tol > 0 ? -tol : Tol;   // kaba eleme: kutular en az tolerans kadar iç içe olmalı
         var pairs = new List<(uint, uint)>();
         for (int i = 0; i < cand.Count; i++)
         {
@@ -92,8 +95,9 @@ static class ClashDetector
                 uint b = cand[j];
                 int bb = (int)b * 3;
                 if (min[bb] > max[ba] + Tol) break;
-                if (min[bb + 1] > max[ba + 1] + Tol || max[bb + 1] < min[ba + 1] - Tol) continue;
-                if (min[bb + 2] > max[ba + 2] + Tol || max[bb + 2] < min[ba + 2] - Tol) continue;
+                if (min[bb] > max[ba] + e) continue;
+                if (min[bb + 1] > max[ba + 1] + e || max[bb + 1] < min[ba + 1] - e) continue;
+                if (min[bb + 2] > max[ba + 2] + e || max[bb + 2] < min[ba + 2] - e) continue;
                 if (group[(int)a - 1] == group[(int)b - 1] || Related(s, a, b)) continue;
                 pairs.Add((a, b));
             }
@@ -102,7 +106,7 @@ static class ClashDetector
         var hits = new ConcurrentBag<(uint, uint)>();
         Parallel.ForEach(pairs, p =>
         {
-            if (Clash(tris, start, min, max, p.Item1, p.Item2, boxMin, boxMax)) hits.Add(p);
+            if (Clash(tris, start, min, max, p.Item1, p.Item2, boxMin, boxMax, tol)) hits.Add(p);
         });
 
         foreach (var (a, b) in hits)
@@ -132,7 +136,7 @@ static class ClashDetector
             || c.Contains(SceneData.PairKey(ca, b)) || c.Contains(SceneData.PairKey(a, cb));
     }
 
-    static bool Clash(double[] tris, int[] start, double[] min, double[] max, uint a, uint b, double[] boxMin, double[] boxMax)
+    static bool Clash(double[] tris, int[] start, double[] min, double[] max, uint a, uint b, double[] boxMin, double[] boxMax, double tol)
     {
         // Ortak bölge = iki eleman kutusunun kesişimi ∩ geçerli kesit kutusu (tolerans payıyla).
         Span<double> o0 = stackalloc double[3], o1 = stackalloc double[3];
@@ -146,7 +150,7 @@ static class ClashDetector
         var tb = TrisIn(tris, start[b], start[b + 1], o0, o1);
         foreach (int i in ta)
             foreach (int j in tb)
-                if (TriTri(tris, i * 9, j * 9)) return true;
+                if (TriTri(tris, i * 9, j * 9, tol)) return true;
 
         // Dokunmadan tamamen içinde kalma (ör. kanalın içinden geçen boru).
         if (Inside(min, max, a, b) && PointInMesh(tris, start[a] * 9, tris, start[b], start[b + 1])) return true;
@@ -207,8 +211,11 @@ static class ClashDetector
 
     // ---- üçgen–üçgen kesişimi (Möller 1997, düzleme uzaklıkta Tol toleransı) ------------------------------------
 
-    static bool TriTri(double[] t, int a, int b)
+    /// <param name="pen">0: dokunma da kesişim sayılır. &gt; 0: üçgenler birbirinin düzlemini her iki yönde pen'den fazla
+    /// geçmeli ve kesişim aralıkları pen'den uzun örtüşmeli (eş düzlemli/değen yüzler sayılmaz).</param>
+    static bool TriTri(double[] t, int a, int b, double pen)
     {
+        double sn = pen > 0 ? pen : Tol;
         double a0x = t[a], a0y = t[a + 1], a0z = t[a + 2], a1x = t[a + 3], a1y = t[a + 4], a1z = t[a + 5], a2x = t[a + 6], a2y = t[a + 7], a2z = t[a + 8];
         double b0x = t[b], b0y = t[b + 1], b0z = t[b + 2], b1x = t[b + 3], b1y = t[b + 4], b1z = t[b + 5], b2x = t[b + 6], b2y = t[b + 7], b2z = t[b + 8];
 
@@ -218,11 +225,12 @@ static class ClashDetector
         double l1 = Math.Sqrt(n1x * n1x + n1y * n1y + n1z * n1z);
         if (l1 < 1e-14) return false;
         double d1 = -(n1x * a0x + n1y * a0y + n1z * a0z);
-        double du0 = Snap(n1x * b0x + n1y * b0y + n1z * b0z + d1, l1);
-        double du1 = Snap(n1x * b1x + n1y * b1y + n1z * b1z + d1, l1);
-        double du2 = Snap(n1x * b2x + n1y * b2y + n1z * b2z + d1, l1);
+        double du0 = Snap(n1x * b0x + n1y * b0y + n1z * b0z + d1, l1, sn);
+        double du1 = Snap(n1x * b1x + n1y * b1y + n1z * b1z + d1, l1, sn);
+        double du2 = Snap(n1x * b2x + n1y * b2y + n1z * b2z + d1, l1, sn);
         double du0du1 = du0 * du1, du0du2 = du0 * du2;
         if (du0du1 > 0 && du0du2 > 0) return false;
+        if (pen > 0 && !((du0 > 0 || du1 > 0 || du2 > 0) && (du0 < 0 || du1 < 0 || du2 < 0))) return false;   // yalnız değiyor
 
         // B'nin düzlemi
         double f1x = b1x - b0x, f1y = b1y - b0y, f1z = b1z - b0z, f2x = b2x - b0x, f2y = b2y - b0y, f2z = b2z - b0z;
@@ -230,11 +238,12 @@ static class ClashDetector
         double l2 = Math.Sqrt(n2x * n2x + n2y * n2y + n2z * n2z);
         if (l2 < 1e-14) return false;
         double d2 = -(n2x * b0x + n2y * b0y + n2z * b0z);
-        double dv0 = Snap(n2x * a0x + n2y * a0y + n2z * a0z + d2, l2);
-        double dv1 = Snap(n2x * a1x + n2y * a1y + n2z * a1z + d2, l2);
-        double dv2 = Snap(n2x * a2x + n2y * a2y + n2z * a2z + d2, l2);
+        double dv0 = Snap(n2x * a0x + n2y * a0y + n2z * a0z + d2, l2, sn);
+        double dv1 = Snap(n2x * a1x + n2y * a1y + n2z * a1z + d2, l2, sn);
+        double dv2 = Snap(n2x * a2x + n2y * a2y + n2z * a2z + d2, l2, sn);
         double dv0dv1 = dv0 * dv1, dv0dv2 = dv0 * dv2;
         if (dv0dv1 > 0 && dv0dv2 > 0) return false;
+        if (pen > 0 && !((dv0 > 0 || dv1 > 0 || dv2 > 0) && (dv0 < 0 || dv1 < 0 || dv2 < 0))) return false;
 
         // Kesişim doğrusu yönü; en büyük bileşene izdüşür
         double Dx = Math.Abs(n1y * n2z - n1z * n2y), Dy = Math.Abs(n1z * n2x - n1x * n2z), Dz = Math.Abs(n1x * n2y - n1y * n2x);
@@ -244,13 +253,14 @@ static class ClashDetector
 
         if (!Interval(vp0, vp1, vp2, dv0, dv1, dv2, dv0dv1, dv0dv2, out double i10, out double i11)
             || !Interval(up0, up1, up2, du0, du1, du2, du0du1, du0du2, out double i20, out double i21))
-            return Coplanar(n1x, n1y, n1z, t, a, b);
+            return pen <= 0 && Coplanar(n1x, n1y, n1z, t, a, b);   // eş düzlemli = değen yüzler
         if (i10 > i11) (i10, i11) = (i11, i10);
         if (i20 > i21) (i20, i21) = (i21, i20);
+        if (pen > 0) return Math.Min(i11, i21) - Math.Max(i10, i20) > pen;
         return !(i11 < i20 - Tol || i21 < i10 - Tol);
     }
 
-    static double Snap(double d, double len) => Math.Abs(d) < Tol * len ? 0 : d;
+    static double Snap(double d, double len, double tol) => Math.Abs(d) < tol * len ? 0 : d;
 
     static bool Interval(double v0, double v1, double v2, double d0, double d1, double d2, double d0d1, double d0d2, out double i0, out double i1)
     {

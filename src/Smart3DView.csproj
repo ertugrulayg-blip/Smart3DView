@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Revit 2025â€“2026: .NET 8; Revit 2027+: .NET 10 (RevitDir'deki yÄ±la gÃ¶re seÃ§ilir). -->
+    <!-- Revit 2025–2026: .NET 8; Revit 2027+: .NET 10 (RevitDir'deki yıla göre seçilir). -->
     <TargetFramework>net8.0-windows</TargetFramework>
     <TargetFramework Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(RevitDir)', 'Revit 20(2[7-9]|[3-9][0-9])'))">net10.0-windows</TargetFramework>
     <AssemblyName>Smart3DView</AssemblyName>
@@ -12,8 +12,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RevitDir Condition="'$(RevitDir)' == ''">C:\Program Files\Autodesk\Revit 2026</RevitDir>
-    <!-- Her gÃ¼ncellemede artÄ±rÄ±lÄ±r; pencere baÅŸlÄ±ÄŸÄ±nda ve dÃ¼ÄŸme ipucunda gÃ¶rÃ¼nÃ¼r. -->
-    <Version>1.10.2</Version>
+    <!-- Her güncellemede artırılır; pencere başlığında ve düğme ipucunda görünür. -->
+    <Version>1.13.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -52,7 +52,7 @@
 <main data-l="en">
   <div class="toc">
     <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
-    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-panel">Panel &amp; filter</a>
+    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-panel">Models, tags &amp; view cube</a>
     <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
     <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
   </div>
@@ -86,7 +86,8 @@
   </table>
 
   <h2 id="en-tones">Tones &amp; colored MEP mode</h2>
-  <p>The round buttons at the bottom right switch the look (keys <kbd>1</kbd>–<kbd>7</kbd>): <b>White, Light gray, Gray, Dark, Black, Paper</b> (white surfaces with black lines) and <b>Colored</b>. Faces cut by the section box are drawn as solid poché.</p>
+  <p>The round buttons at the bottom right switch the look (keys <kbd>1</kbd>–<kbd>8</kbd>): <b>White, Light gray, Gray, Dark, Black, Paper</b> (white surfaces with black lines), <b>Colored</b> and <b>Detailed</b> (the default). Faces cut by the section box are drawn as solid poché.</p>
+  <p><b>Detailed</b> mode gives every element type its own color so equipment is easy to tell apart: walls gray, floors and ceilings light, doors near white, windows and mullions dark metal, structure concrete, cable trays and conduits metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow, sanitary fixtures white. Pipes and ducts use their system colors (below, plus heating orange, domestic water cyan, drainage brown).</p>
   <p><b>Colored</b> mode keeps the building gray and colors the services:</p>
   <ul>
     <li><span class="sw" style="background:#296be0"></span>Chilled / cooling water pipes and their insulation — blue</li>
@@ -103,21 +104,22 @@
     <li>Turn on <b>Move</b> (<kbd>M</kbd>) — or hold <kbd>Ctrl</kbd> while dragging — to slide the whole box along that axis.</li>
     <li><b>↺</b> resets the box.</li>
   </ol>
-  <p>Inside the area that was read from Revit everything is instant. If you grow or move the box beyond it, the new area is read from Revit when you release the mouse (this takes a few seconds; the camera stays where it is).</p>
+  <p>Inside the area that was read from Revit everything is instant. If you grow or move the box beyond it, only the elements that are new are read from Revit when you release the mouse — what is already loaded is kept, so growing the box is quick (the camera stays where it is). The status bar shows how long each step took.</p>
 
   <h2 id="en-clash">Clash detection</h2>
-  <p>Click <b>Clash</b> (<kbd>C</kbd>). Elements that touch or overlap an element of a <b>different service</b> turn red, everything else fades. Click a red element to see what it clashes with.</p>
+  <p>Click <b>Clash</b> (<kbd>C</kbd>). Elements that overlap an element of a <b>different service</b> turn red and blue (the two sides of the clash), everything else fades. Click a clashing element to see what it clashes with.</p>
+  <p><b>Tolerance:</b> the button next to Clash sets how deep two elements must overlap to count — <b>5 mm</b> by default, click for 10, 25, 50 mm or <b>touch</b> (touching counts too). With a tolerance, equipment resting on a floor, a panel mounted on a wall or a tray touching a beam is not reported.</p>
   <p>Services checked against each other: cooling pipes, heating pipes, fire protection, domestic water, drainage, other pipes, supply ducts, return/exhaust ducts, other ducts, cable trays &amp; conduits, electrical devices, mechanical equipment, structural beams and columns.</p>
   <p><b>Not</b> reported: parts of the same run (a pipe and its own elbow or coupling), elements connected to each other through connectors (e.g. an air handler and its duct), and a pipe or duct with its own insulation. Elements running completely inside another (a pipe inside a duct) are reported. Only the area inside the current box is checked; editing the box re-runs the check.</p>
 
   <h2 id="en-pic">Take picture</h2>
-  <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>.</p>
+  <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>. When it is saved, a small window shows the picture, where it went in Revit and buttons to open the PNG or its folder.</p>
 
-  <h2 id="en-panel">Panel, filter, properties, tags and view cube</h2>
+  <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
   <ul>
-    <li><b>Panel</b>: the right-hand filter groups the categories under <b>Architecture, Structure, Mechanical and Electrical</b>. Untick a group to hide it all, or open it with ▶ and untick single categories (e.g. Cable Trays, Mechanical Equipment). A filled box means the group is partly hidden. Hidden categories are not picked, measured or clash-checked, and stay hidden in new windows.</li>
-    <li><b>Properties</b>: click an element to see its size, width/height, length, level, offset/elevation, system, mark, comments and all other parameters (in project units). <b>Select and show in Revit</b> selects it in the model.</li>
-    <li><b>Tag</b> (<kbd>T</kbd>): hover over an element to see its category, type and size next to the cursor.</li>
+    <li><b>Models</b> (top left): the host file and every linked model are listed with their element counts. Click a name to hide or show that whole model; hidden models are left out of clash detection.</li>
+    <li><b>Show in Revit</b>: select an element and click this button to select it and zoom to it in Revit (host model elements).</li>
+    <li><b>Tag</b> (<kbd>T</kbd>): hover over an element to see its category and type next to the cursor.</li>
     <li><b>View cube</b> (top right): click a face, edge or corner to look exactly from the right, left, front, top… <b>⌂ 3D</b> under it returns to the isometric view.</li>
     <li><b>Clash</b> uses two colors: red and blue are the two sides of a clash (e.g. pipes red, ducts blue). Click a clashing element: it turns red, the elements it clashes with turn blue.</li>
   </ul>
@@ -135,7 +137,7 @@
   <h2 id="en-keys">Keyboard shortcuts</h2>
   <table>
     <tr><th>Key</th><th>Action</th><th>Key</th><th>Action</th></tr>
-    <tr><td><kbd>1</kbd>–<kbd>7</kbd></td><td>Tone</td><td><kbd>B</kbd></td><td>Box editing</td></tr>
+    <tr><td><kbd>1</kbd>–<kbd>8</kbd></td><td>Tone</td><td><kbd>B</kbd></td><td>Box editing</td></tr>
     <tr><td><kbd>F</kbd></td><td>Fit</td><td><kbd>M</kbd></td><td>Move box</td></tr>
     <tr><td><kbd>Home</kbd></td><td>Default view</td><td><kbd>C</kbd></td><td>Clash detection</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Clear selection</td><td><kbd>P</kbd></td><td>Take picture</td></tr>
@@ -148,7 +150,7 @@
   <h2 id="en-lic">Trial &amp; license</h2>
   <ul>
     <li><b>First 14 days:</b> every feature is available.</li>
-    <li><b>After the trial:</b> grayscale 3D viewing stays free. Colored mode, Clash detection, Take picture, Box editing and Measure need a full license.</li>
+    <li><b>After the trial:</b> grayscale 3D viewing stays free. Colored and Detailed modes, Clash detection, Take picture, Box editing and Measure need a full license.</li>
     <li><b>Full license:</b> USD 4, one-time, perpetual, usable on 2 computers — <a href="https://schema-tools.net/smart3dview/">schema-tools.net/smart3dview</a>.</li>
   </ul>
   <h3>Activating</h3>
@@ -182,7 +184,7 @@
 <main data-l="tr">
   <div class="toc">
     <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
-    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-panel">Panel ve filtre</a>
+    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-panel">Modeller, etiket ve küp</a>
     <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
     <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
   </div>
@@ -216,7 +218,8 @@
   </table>
 
   <h2 id="tr-tones">Tonlar ve renkli tesisat modu</h2>
-  <p>Sağ alttaki yuvarlak düğmeler görünümü değiştirir (<kbd>1</kbd>–<kbd>7</kbd> tuşları): <b>Beyaz, Açık gri, Gri, Koyu, Siyah, Kağıt</b> (beyaz yüzey, siyah çizgi) ve <b>Renkli</b>. Kesit kutusunun kestiği yüzler dolu poşe olarak çizilir.</p>
+  <p>Sağ alttaki yuvarlak düğmeler görünümü değiştirir (<kbd>1</kbd>–<kbd>8</kbd> tuşları): <b>Beyaz, Açık gri, Gri, Koyu, Siyah, Kağıt</b> (beyaz yüzey, siyah çizgi), <b>Renkli</b> ve <b>Detaylı</b> (varsayılan). Kesit kutusunun kestiği yüzler dolu poşe olarak çizilir.</p>
+  <p><b>Detaylı</b> modda her eleman türü kendi rengindedir, cihazlar kolayca ayırt edilir: duvarlar gri, döşeme ve tavanlar açık, kapılar beyaza yakın, pencere ve kayıtlar koyu metal, taşıyıcı sistem beton rengi, kablo tavası ve conduitler metalik, kanallar galvaniz, mekanik cihazlar mor, elektrik panoları turuncu, aydınlatma sarı, vitrifiyeler beyaz. Borular ve kanallar sistem rengindedir (aşağıdaki renkler + ısıtma turuncu, kullanım suyu camgöbeği, pis su kahverengi).</p>
   <p><b>Renkli</b> modda bina gri kalır, tesisatlar renklenir:</p>
   <ul>
     <li><span class="sw" style="background:#296be0"></span>Soğutma suyu boruları ve izolasyonları — mavi</li>
@@ -233,21 +236,22 @@
     <li><b>Taşı</b>'yı açın (<kbd>M</kbd>) — ya da sürüklerken <kbd>Ctrl</kbd>'ye basılı tutun — bütün kutu o eksende kayar.</li>
     <li><b>↺</b> kutuyu başa döndürür.</li>
   </ol>
-  <p>Revit'ten okunan alanın içinde her şey anlıktır. Kutuyu bu alanın dışına büyütür ya da taşırsanız, fareyi bıraktığınızda yeni bölge Revit'ten okunur (birkaç saniye sürer; kamera yerinde kalır).</p>
+  <p>Revit'ten okunan alanın içinde her şey anlıktır. Kutuyu bu alanın dışına büyütür ya da taşırsanız, fareyi bıraktığınızda Revit'ten yalnız yeni giren elemanlar okunur — yüklü olanlar korunur, kutuyu büyütmek hızlıdır (kamera yerinde kalır). Durum çubuğu her adımın ne kadar sürdüğünü gösterir.</p>
 
   <h2 id="tr-clash">Çakışma denetimi</h2>
-  <p><b>Çakışma</b>'ya tıklayın (<kbd>C</kbd>). <b>Farklı bir tesisattaki</b> elemana dokunan ya da onunla çakışan elemanlar kırmızı olur, diğerleri soluklaşır. Kırmızı bir elemana tıklayınca neyle çakıştığı yazar.</p>
+  <p><b>Çakışma</b>'ya tıklayın (<kbd>C</kbd>). <b>Farklı bir tesisattaki</b> elemanla çakışan elemanlar kırmızı ve mavi olur (çakışmanın iki tarafı), diğerleri soluklaşır. Çakışan bir elemana tıklayınca neyle çakıştığı yazar.</p>
+  <p><b>Tolerans:</b> Çakışma düğmesinin yanındaki düğme, iki elemanın çakışma sayılması için birbirinin içine ne kadar girmesi gerektiğini belirler — varsayılan <b>5 mm</b>; tıklayınca 10, 25, 50 mm ya da <b>dokunma</b> (değmek de sayılır). Toleransla döşemeye oturan cihaz, duvara monte pano ya da kirişe değen tava çakışma sayılmaz.</p>
   <p>Birbirine karşı denetlenen gruplar: soğutma boruları, ısıtma boruları, yangın, temiz su, pis su, diğer borular, üfleme kanalları, emiş/dönüş kanalları, diğer kanallar, kablo tavaları ve conduit'ler, elektrik elemanları, mekanik ekipman, taşıyıcı kiriş ve kolonlar.</p>
   <p>Çakışma <b>sayılmayanlar</b>: aynı hattın parçaları (boru ile kendi dirseği ya da kaplini), connector ile birbirine bağlı elemanlar (ör. klima santrali ve kanalı), bir boru/kanal ile kendi izolasyonu. Tamamen başka bir elemanın içinden geçenler (kanal içindeki boru) çakışma sayılır. Yalnız geçerli kutunun içi denetlenir; kutuyu düzenlemek denetimi yeniler.</p>
 
   <h2 id="tr-pic">Görüntü al</h2>
-  <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır.</p>
+  <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır. Kaydedilince küçük bir pencere görüntüyü, Revit'te nereye kaydedildiğini ve PNG'yi ya da klasörünü açan düğmeleri gösterir.</p>
 
-  <h2 id="tr-panel">Panel, filtre, özellikler, etiket ve görünüm küpü</h2>
+  <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>
   <ul>
-    <li><b>Panel</b>: sağdaki filtre kategorileri <b>Mimari, Statik, Mekanik ve Elektrik</b> başlıklarında toplar. Başlığın işaretini kaldırınca o disiplinin tümü gizlenir; ▶ ile açıp tek tek kategori de kapatabilirsiniz (ör. Kablo Tavaları, Mekanik Cihazlar). Dolu kutu, başlığın bir kısmının gizli olduğunu gösterir. Gizli kategoriler seçilmez, ölçülmez, çakışmaya girmez ve yeni pencerelerde de gizli kalır.</li>
-    <li><b>Özellikler</b>: bir elemana tıklayın; boyut, genişlik/yükseklik, uzunluk, seviye, ötelenme/kot, sistem, işaret, yorumlar ve diğer tüm parametreler (proje biriminde) görünür. <b>Revit'te seç ve göster</b> elemanı modelde seçer.</li>
-    <li><b>Etiket</b> (<kbd>T</kbd>): imleci bir elemanın üstünde gezdirin; kategori, tip ve boyutu imlecin yanında yazar.</li>
+    <li><b>Modeller</b> (sol üst): ana dosya ve her bağlı model eleman sayısıyla listelenir. Bir ada tıklayınca o modelin tamamı gizlenir ya da gösterilir; gizli modeller çakışma denetimine girmez.</li>
+    <li><b>Revit'te göster</b>: bir elemanı seçip bu düğmeye tıklayın; eleman Revit'te seçilir ve gösterilir (ana modeldeki elemanlar).</li>
+    <li><b>Etiket</b> (<kbd>T</kbd>): imleci bir elemanın üstünde gezdirin; kategori ve tipi imlecin yanında yazar.</li>
     <li><b>Görünüm küpü</b> (sağ üst): bir yüze, kenara ya da köşeye tıklayın; tam sağdan, soldan, önden, üstten… bakar. Altındaki <b>⌂ 3B</b> izometrik görünüme döner.</li>
     <li><b>Çakışma</b> iki renk kullanır: kırmızı ve mavi çakışmanın iki tarafıdır (ör. borular kırmızı, kanallar mavi). Çakışan bir elemana tıklayın: kendisi kırmızı, çakıştıkları mavi olur.</li>
   </ul>
@@ -265,7 +269,7 @@
   <h2 id="tr-keys">Klavye kısayolları</h2>
   <table>
     <tr><th>Tuş</th><th>İşlem</th><th>Tuş</th><th>İşlem</th></tr>
-    <tr><td><kbd>1</kbd>–<kbd>7</kbd></td><td>Ton</td><td><kbd>B</kbd></td><td>Kutu düzenleme</td></tr>
+    <tr><td><kbd>1</kbd>–<kbd>8</kbd></td><td>Ton</td><td><kbd>B</kbd></td><td>Kutu düzenleme</td></tr>
     <tr><td><kbd>F</kbd></td><td>Sığdır</td><td><kbd>M</kbd></td><td>Kutuyu taşı</td></tr>
     <tr><td><kbd>Home</kbd></td><td>Varsayılan görünüm</td><td><kbd>C</kbd></td><td>Çakışma denetimi</td></tr>
     <tr><td><kbd>Esc</kbd></td><td>Seçimi bırak</td><td><kbd>P</kbd></td><td>Görüntü al</td></tr>
@@ -278,7 +282,7 @@
   <h2 id="tr-lic">Deneme ve lisans</h2>
   <ul>
     <li><b>İlk 14 gün:</b> tüm özellikler açık.</li>
-    <li><b>Deneme sonrası:</b> gri 3B görüntüleme ücretsiz kalır. Renkli mod, Çakışma, Görüntü al, Kutu düzenleme ve Ölç tam lisans ister.</li>
+    <li><b>Deneme sonrası:</b> gri 3B görüntüleme ücretsiz kalır. Renkli ve Detaylı mod, Çakışma, Görüntü al, Kutu düzenleme ve Ölç tam lisans ister.</li>
     <li><b>Tam lisans:</b> 4 USD, tek seferlik, süresiz, 2 bilgisayarda — <a href="https://schema-tools.net/smart3dview/">schema-tools.net/smart3dview</a>.</li>
   </ul>
   <h3>Etkinleştirme</h3>

@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.10.2-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.13.0-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -22,8 +22,11 @@ Smart3DView opens the area you are working on in a separate, GPU-accelerated 3D 
 - In a plan view → drag a rectangle; the height comes from the view range.
 - Linked models are included; elements you hide in a 3D view stay hidden.
 
+**Detailed color mode**
+Every element type in its own color, so equipment is easy to tell apart: walls gray, doors near white, cable trays metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow — and pipes and ducts in their system colors.
+
 **Tones made for reading 3D**
-White, Light gray, Gray, Dark, Black and Paper (hidden-line look) — switch with one click or keys 1–7.
+White, Light gray, Gray, Dark, Black and Paper (hidden-line look) — switch with one click or keys 1–8.
 
 **Colored MEP mode**
 The building stays gray while services are colored: chilled/cooling water pipes and their insulation blue, fire protection red, supply air ducts magenta, return and exhaust ducts green. Systems are recognized from Revit system classifications and system names.
@@ -34,17 +37,17 @@ One click highlights touching or overlapping elements of different services in t
 **3D measuring with snapping**
 Measure point to point in 3D. The cursor snaps to corners, edge midpoints, edges and pipe/duct centerlines, with AutoCAD-style markers (X, circle, parallel lines). Lock the measurement to the X, Y or Z axis; results use the project's length units.
 
-**Filter and properties panel**
-Turn categories on and off, grouped as Architecture, Structure, Mechanical and Electrical — switch a whole discipline or expand it for single categories. Click an element to see its parameters and select it in Revit with one click.
+**Models list and Show in Revit**
+The host file and every linked model are listed at the top left — click a name to hide or show that whole model. Select an element and click Show in Revit to select and zoom to it in Revit.
 
 **View cube, live tags, reload and multiple windows**
-A view cube in the corner gives exact top, front, side and corner views. Tag mode shows sizes (e.g. 300x100, Ø50) as you hover. Reload (R / F5) brings in changes made in Revit while keeping the camera, box, tone and clash results. Each click on the ribbon button opens a new window, so you can keep several 3D areas open at once.
+A view cube in the corner gives exact top, front, side and corner views. Tag mode shows the category and type of the element under the cursor. Reload (R / F5) brings in changes made in Revit while keeping the camera, box, tone and clash results. Each click on the ribbon button opens a new window, so you can keep several 3D areas open at once.
 
 **Live section box**
-Drag the face handles to shrink or grow the box, or move the whole box along an axis. Cutting happens on the graphics card, so changes are instant.
+Drag the face handles to shrink or grow the box, or move the whole box along an axis. Cutting happens on the graphics card, so changes are instant. Growing the box reads only the newly included elements from Revit. Cable trays are shown at Fine detail.
 
 **Take picture**
-Saves a high-resolution image (about 4K) of the current view into your model under Project Browser → Renderings, ready to place on sheets.
+Saves a high-resolution image (about 4K) of the current view into your model under Project Browser → Renderings, ready to place on sheets, and as a PNG file. A small window shows the picture and opens the file or its folder.
 
 **Fast on any graphics card**
 Geometry is uploaded to the GPU once; navigation stays smooth even on integrated graphics thanks to adaptive resolution while you orbit.
@@ -53,14 +56,14 @@ Geometry is uploaded to the GPU once; navigation stays smooth even on integrated
 Shift + middle mouse to orbit (around the selected element), middle mouse to pan, wheel to zoom towards the cursor, double-click or F to fit.
 
 **Trial and license**
-Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored mode, Clash detection, 3D measuring, Take picture and Box editing.
+Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored and Detailed modes, Clash detection, 3D measuring, Take picture and Box editing.
 
 ## Publisher Privacy Policy
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.10.2
-- Version Description: Initial release — supports Revit 2025, 2026 and 2027. Includes reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, discipline filter and properties panel, view cube, live size tags and two-color clash display.
+- Version Number: 1.13.0
+- Version Description: Initial release — supports Revit 2025, 2026 and 2027. Includes Detailed color mode, clash tolerance, faster box growing, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube, live tags and two-color clash display.
 
 ## Commands (Add Commands)
 - Command: **Smart 3D View** — Ribbon: Add-Ins tab → Smart3DView panel.
@@ -70,11 +73,11 @@ https://schema-tools.net/privacy-policy.html
 1. In Revit open the Add-Ins tab and click Smart 3D View in the Smart3DView panel.
 2. What opens depends on the context: the selected elements (plus a small margin), the section box of the active 3D view, or — in a plan view — a rectangle you drag (height from the view range).
 3. Navigate: Shift + middle mouse to orbit, middle mouse to pan, wheel to zoom, double-click or F to fit. Left click selects an element and shows its category, type and ID.
-4. Choose a tone at the bottom right (keys 1–7). Colored mode colors cooling, fire protection, supply and return/exhaust systems.
+4. Choose a tone at the bottom right (keys 1–8). Detailed (default) gives every element type its own color; Colored colors only the cooling, fire protection, supply and return/exhaust systems.
 5. Box (B): drag the blue handles to move faces; Move (M) or Ctrl + drag slides the whole box. Areas beyond the loaded region are read from Revit when you release the mouse.
 6. Clash (C): elements clashing with a different service turn red and blue; click one to see its partner.
 7. Measure (D): click two points; the cursor snaps to corners, midpoints and edges. X / Y / Z lock the axis, Free releases it, Delete clears all measurements.
-8. Panel: the side panel lists categories by discipline (Architecture, Structure, Mechanical, Electrical) to show or hide, and the parameters of the selected element. Tag (T) shows sizes on hover; the view cube at the top right sets exact views.
+8. Models (top left): click the host or a linked model to hide or show it. Show in Revit selects the clicked element in Revit. Tag (T) shows category and type on hover; the view cube at the top right sets exact views.
 9. Reload (R / F5) reads changes from Revit and keeps your view. Clicking Smart 3D View again opens another window.
 10. Take picture (P): the view is saved into the model under Project Browser → Renderings.
 11. Help: F1 or the ? button. The license window opens from the Trial / Free version button.

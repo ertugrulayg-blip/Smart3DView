@@ -19,7 +19,7 @@ sealed record Palette(
     string Tr, string En,
     Color BgTop, Color BgBottom, Color Surface, Color Edge, Color Cut,
     double Ambient, double Key, double Fill, double Sky, double EdgePx,
-    bool Dark, bool Tones, bool Colored = false)
+    bool Dark, bool Tones, bool Colored = false, bool Detailed = false)
 {
     public string Name => L.T(Tr, En);
 
@@ -34,6 +34,7 @@ sealed record Palette(
         new("Siyah", "Black",         C(0x161616), C(0x000000), C(0x343434), C(0xE6E6E6), C(0xEDEDED), 0.35, 0.60, 0.25, 0.10, 1.0, true, true),
         new("Kağıt", "Paper",         C(0xFFFFFF), C(0xFFFFFF), C(0xFFFFFF), C(0x111111), C(0x161616), 0.90, 0.10, 0.04, 0.03, 1.4, false, false),
         new("Renkli", "Colored",      C(0xF4F4F2), C(0xD2D2D0), C(0xE8E8E8), C(0x2A2A2A), C(0x3A3A3A), 0.48, 0.58, 0.20, 0.12, 1.2, false, true, Colored: true),
+        new("Detaylı", "Detailed",    C(0xF2F4F6), C(0xCDD3D9), C(0xE0E0E0), C(0x2A2A2A), C(0x3A3A3A), 0.46, 0.60, 0.20, 0.12, 1.1, false, true, Colored: true, Detailed: true),
     };
 }
 
@@ -73,14 +74,19 @@ sealed partial class ViewerWindow : Window
     readonly TextBlock _info = new() { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0) };
     readonly StackPanel _tools = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     readonly StackPanel _swatches = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-    readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnShot, _btnHelp;
+    readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnShot, _btnHelp;
+    // Çakışma toleransı (mm): yalnız birbirinin içine bundan derin giren elemanlar çakışır; 0 = dokunma da sayılır.
+    static readonly int[] TolSteps = { 5, 10, 25, 50, 0 };
+    int _clashTolMm = 5;
     readonly DispatcherTimer _flashTimer = new() { Interval = TimeSpan.FromSeconds(6) };
 
     IViewerHost? _host;
     SceneData? _scene;
     string _docTitle = "";
     Palette _pal = Palette.All[0];
-    int _palIndex;
+    // Varsayılan ton "Detaylı" (kullanıcı geri bildirimi, 2026-10-07: "her şey çok gri, ekipmanlar ayırt edilsin").
+    static readonly int DefaultPalette = Array.FindIndex(Palette.All, p => p.Detailed);
+    int _palIndex = DefaultPalette;
     string? _error, _flash;
     string _timing = "";
     ClashResult? _clash;
@@ -118,14 +124,17 @@ sealed partial class ViewerWindow : Window
         _btnFree = MakeTool(L.T("Serbest", "Free"), L.T("Eksen kilidini kaldır — serbest 3B ölçü", "Remove the axis lock — free 3D measure"), () => { _view.FreeAxis(); _view.FocusGl(); });
         _btnClear = MakeTool("🗑  " + L.T("Sil", "Delete"), L.T("Bütün ölçüleri sil  (Delete)", "Delete all measurements  (Delete)"), () => { _view.ClearMeasures(); _view.FocusGl(); });
         _btnClash = MakeTool("⚠  " + L.T("Çakışma", "Clash"),
-            L.T("Farklı tesisatlar arasında dokunan/çakışan elemanları kırmızı göster (boru–dirsek gibi aynı hattın parçaları sayılmaz)  (C)",
-                "Show touching/clashing elements between different services in red (parts of the same run are ignored)  (C)"), () => _ = ToggleClash());
+            L.T("Farklı tesisatlar arasında çakışan elemanları kırmızı/mavi göster — toleranstan az giren, değen elemanlar sayılmaz; boru–dirsek gibi aynı hattın parçaları da sayılmaz  (C)",
+                "Show clashing elements between different services in red/blue — overlaps below the tolerance and touching elements are ignored, as are parts of the same run  (C)"), () => _ = ToggleClash());
+        _btnTol = MakeTool("", L.T("Çakışma toleransı: elemanlar birbirinin içine bundan fazla girerse çakışma sayılır — değen, yaslanan, üstüne oturan elemanlar sayılmaz. Tıkla: 5 → 10 → 25 → 50 mm → dokunma da sayılsın",
+                                  "Clash tolerance: elements count as clashing only if they overlap by more than this — touching, resting or mounted elements are ignored. Click: 5 → 10 → 25 → 50 mm → touching counts too"), CycleTol);
         _btnShot = MakeTool("📷  " + L.T("Görüntü al", "Take picture"),
             L.T("Görüntüyü yüksek çözünürlükte Revit'e kaydet (Proje Tarayıcısı → Renderings)  (P)",
                 "Save the view in high resolution to Revit (Project Browser → Renderings)  (P)"), TakePicture);
         _btnLic = MakeTool("", L.T("Lisans durumu / satın al", "License status / buy"), () => ShowLicense(null));
         _btnHelp = MakeTool("?", L.T("Hızlı başlangıç ve yardım  (F1)", "Quick start and help  (F1)"), Help.Open);
-        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnShot, _btnHelp }) _tools.Children.Add(b);
+        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnShot, _btnHelp }) _tools.Children.Add(b);
+        _btnTol.Visibility = Visibility.Collapsed;
         _btnLockX.Visibility = _btnLockY.Visibility = _btnLockZ.Visibility = _btnFree.Visibility = _btnClear.Visibility = Visibility.Collapsed;
         _btnMove.Visibility = _btnReset.Visibility = Visibility.Collapsed;
 
@@ -146,8 +155,6 @@ sealed partial class ViewerWindow : Window
         var dock = new DockPanel();
         DockPanel.SetDock(_bar, Dock.Bottom);
         dock.Children.Add(_bar);
-        DockPanel.SetDock(_side, Dock.Right);
-        dock.Children.Add(_side);
         dock.Children.Add(_view);
         BuildSide();
         Content = dock;
@@ -155,7 +162,7 @@ sealed partial class ViewerWindow : Window
         for (int i = 0; i < Palette.All.Length; i++) _swatches.Children.Add(MakeSwatch(i));
 
         _view.SelectionChanged += UpdateStatus;
-        _view.SelectionChanged += () => { if (_sideOpen) ShowProps(); };
+        _view.SelectionChanged += RefreshSide;
         _view.MeasureChanged += () => { UpdateStatus(); RefreshTools(); };
         _view.PaletteKey += ApplyPalette;
         _view.ToolKey += k =>
@@ -186,7 +193,7 @@ sealed partial class ViewerWindow : Window
         });
         License.Changed += licChanged;
         ModelWatch.Changed += modelChanged;
-        Closed += (_, _) => { License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
+        Closed += (_, _) => { _closed = true; License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
         Loaded += async (_, _) => { await License.Revalidate(); RefreshTools(); };
         Closing += (_, _) => SaveSettings();
 
@@ -195,6 +202,7 @@ sealed partial class ViewerWindow : Window
 
     void Load(SceneData scene, string docTitle, bool keepView)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         _scene = scene;
         _docTitle = docTitle;
         Title = $"{Product.Name} — {docTitle} — {scene.Source} — v{AddinVersion.Version}";
@@ -204,11 +212,23 @@ sealed partial class ViewerWindow : Window
         _timing = scene.Timing;
         _clash = null;
         _view.SetScene(scene, keepView);
-        _view.SetHiddenCategories(_hidden);
-        RebuildFilter();
-        if (_sideOpen) ShowProps();
+        _view.SetHiddenModels(_hidden);
+        _loadSeconds = sw.Elapsed.TotalSeconds;
         if (_clashOn) _ = RunClash();
         UpdateStatus();
+        RefreshSide();
+    }
+
+    bool _closed;
+    double _loadSeconds;
+
+    /// <summary>Okuma süresinin dökümü — nerede beklendiği görünsün (kullanıcı isteği 2026-10-07: "nerede zorlanıyor tespit et").</summary>
+    string Breakdown(SceneData s)
+    {
+        double other = Math.Max(0, s.Seconds - s.GeoSeconds - s.TriSeconds - s.InfoSeconds);
+        return L.T(
+            $"{s.Seconds + _loadSeconds:0.0} sn: Revit geometri {s.GeoSeconds:0.0} · üçgenleme {s.TriSeconds:0.0} · eleman adı/sınıfı {s.InfoSeconds:0.0} · tarama/hazırlık {other:0.0} · pencereye yükleme {_loadSeconds:0.0}",
+            $"{s.Seconds + _loadSeconds:0.0} s: Revit geometry {s.GeoSeconds:0.0} · triangulation {s.TriSeconds:0.0} · element name/class {s.InfoSeconds:0.0} · scan/setup {other:0.0} · upload to window {_loadSeconds:0.0}");
     }
 
     // ---- araçlar -------------------------------------------------------------------------------------------------
@@ -247,15 +267,29 @@ sealed partial class ViewerWindow : Window
     void Grow(double[] lo, double[] hi)
     {
         if (_host == null || _scene?.Context == null) { Flash(L.T("Revit bağlantısı yok; yalnız okunan alan gösterilebilir.", "No Revit link; only the loaded area can be shown.")); return; }
+        if (_busy) { _pendingGrow = true; return; }   // okuma sürerken yeniden büyütüldü → bitince son kutu okunur
         _busy = true;
         Flash(L.T("Genişleyen bölge Revit'ten okunuyor…", "Reading the enlarged area from Revit…"));
+        string? selKey = _view.SelectedKey;
+        // Yüklü elemanlar korunur; Revit'ten yalnız yeni giren elemanların geometrisi istenir.
         _host.Recollect(_scene.Context, lo, hi, (scene, err) => Dispatcher.BeginInvoke(() =>
         {
             _busy = false;
             if (scene == null) { Flash(err ?? "?"); return; }
             Load(scene, _docTitle, keepView: true);
-            Flash(L.T($"Kutu genişletildi ({scene.Seconds:0.0} sn).", $"Box enlarged ({scene.Seconds:0.0} s)."));
-        }));
+            _view.SelectByKey(selKey);
+            Flash(L.T("Kutu genişletildi — ", "Box enlarged — ") + Breakdown(scene));
+            if (_pendingGrow) { _pendingGrow = false; GrowIfNeeded(_view.BoxMin, _view.BoxMax); }
+        }), append: _scene);
+    }
+
+    bool _pendingGrow;
+
+    void GrowIfNeeded(double[] lo, double[] hi)
+    {
+        double[] cl = _view.LoadedMin, ch = _view.LoadedMax;
+        for (int k = 0; k < 3; k++)
+            if (lo[k] < cl[k] - 1e-6 || hi[k] > ch[k] + 1e-6) { Grow(lo, hi); return; }
     }
 
     /// <summary>Aynı alanı Revit'ten yeniden okur (model değişiklikleri). Pencerede yapılanlar korunur: kamera,
@@ -264,9 +298,8 @@ sealed partial class ViewerWindow : Window
     {
         if (_busy) return;
         if (_host == null || _scene?.Context == null) { Flash(L.T("Revit bağlantısı yok; yenilenemez.", "No Revit link; cannot reload.")); return; }
-        // Okunan alan ile düzenlenen kutunun birleşimi (kutu sonradan büyütülmüş olabilir)
-        double[] lo = _view.LoadedMin, hi = _view.LoadedMax, bl = _view.BoxMin, bh = _view.BoxMax;
-        for (int i = 0; i < 3; i++) { lo[i] = Math.Min(lo[i], bl[i]); hi[i] = Math.Max(hi[i], bh[i]); }
+        // Yalnız görünen kutu (hızlı); dışına çıkılınca kutu büyütme yeni elemanları ekler.
+        double[] lo = _view.BoxMin, hi = _view.BoxMax;
         string? selKey = _view.SelectedKey;
         _busy = true;
         Flash(L.T("Revit'ten yeniden okunuyor…", "Reloading from Revit…"));
@@ -278,9 +311,22 @@ sealed partial class ViewerWindow : Window
             Load(scene, _docTitle, keepView: true);
             _view.SelectByKey(selKey);
             RefreshTools();
-            Flash(L.T($"Revit'teki değişiklikler yansıtıldı ({scene.Seconds:0.0} sn).", $"Changes from Revit applied ({scene.Seconds:0.0} s)."));
+            Flash(L.T("Revit'teki değişiklikler yansıtıldı — ", "Changes from Revit applied — ") + Breakdown(scene));
         }));
     }
+
+    void CycleTol()
+    {
+        int i = Array.IndexOf(TolSteps, _clashTolMm);
+        _clashTolMm = TolSteps[(i + 1) % TolSteps.Length];
+        RefreshTools();
+        if (_clashOn) _ = RunClash();
+        _view.FocusGl();
+    }
+
+    string TolText => _clashTolMm > 0
+        ? "± " + (_scene?.FormatLength(_clashTolMm / 304.8) ?? $"{_clashTolMm} mm")
+        : L.T("dokunma", "touch");
 
     async Task ToggleClash()
     {
@@ -305,7 +351,7 @@ sealed partial class ViewerWindow : Window
         var hi = _view.BoxMax;
         Flash(L.T("Çakışmalar hesaplanıyor…", "Checking clashes…"));
         var hid = _view.HiddenMask();
-        var r = await Task.Run(() => ClashDetector.Run(scene, lo, hi, hid));
+        var r = await Task.Run(() => ClashDetector.Run(scene, lo, hi, hid, _clashTolMm / 304.8));
         if (scene != _scene || !_clashOn) return;
         _clash = r;
         _view.SetClash(r);
@@ -335,11 +381,53 @@ sealed partial class ViewerWindow : Window
             if (_host != null && _scene?.Context != null)
             {
                 Flash(L.T("Görüntü Revit'e kaydediliyor…", "Saving the image to Revit…"));
-                _host.SaveImage(_scene.Context, path, msg => Dispatcher.BeginInvoke(() => Flash(msg)));
+                _host.SaveImage(_scene.Context, path, msg => Dispatcher.BeginInvoke(() => { Flash(msg); PictureSaved(msg, path); }));
             }
-            else Flash(L.T("Görüntü kaydedildi: ", "Image saved: ") + path);
+            else PictureSaved(null, path);
         }
         catch (Exception ex) { Flash(ex.Message); }
+    }
+
+    /// <summary>Görüntünün nereye kaydedildiğini açıkça gösterir (kullanıcı geri bildirimi, 2026-10-07: "fotoğraf
+    /// çekiyor mu bilmiyorum, nereye atıyor göremiyorum"): Revit'teki yeri + PNG dosyası, aç / klasörü aç düğmeleri.</summary>
+    void PictureSaved(string? revitMsg, string path)
+    {
+        var w = new Window
+        {
+            Title = L.T("Görüntü kaydedildi", "Picture saved"), Owner = this, SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false,
+        };
+        var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14), MaxWidth = 560 };
+        try
+        {
+            var thumb = new BitmapImage();
+            thumb.BeginInit(); thumb.UriSource = new Uri(path); thumb.DecodePixelWidth = 520; thumb.CacheOption = BitmapCacheOption.OnLoad; thumb.EndInit();
+            stack.Children.Add(new Image { Source = thumb, Width = 520, Margin = new Thickness(0, 0, 0, 10) });
+        }
+        catch { }
+        void Line(string t, bool bold = false) => stack.Children.Add(new TextBlock
+        {
+            Text = t, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6), FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
+        });
+        if (revitMsg != null) Line(revitMsg, bold: true);
+        Line(L.T("PNG dosyası: ", "PNG file: ") + path);
+        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
+        Button B(string t, Action a)
+        {
+            var b = new Button { Content = t, Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(6, 0, 0, 0), MinWidth = 80 };
+            b.Click += (_, _) => { try { a(); } catch (Exception ex) { Flash(ex.Message); } };
+            return b;
+        }
+        row.Children.Add(B(L.T("Görüntüyü aç", "Open picture"), () =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true })));
+        row.Children.Add(B(L.T("Klasörü aç", "Open folder"), () =>
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"")));
+        var ok = B(L.T("Tamam", "OK"), () => w.Close());
+        ok.IsDefault = true; ok.IsCancel = true;
+        row.Children.Add(ok);
+        stack.Children.Add(row);
+        w.Content = stack;
+        w.Show();
     }
 
     void Flash(string? msg)
@@ -364,7 +452,8 @@ sealed partial class ViewerWindow : Window
             var first = _scene.Labels[(int)partners[0] - 1];
             sel += L.T("   ⚠ çakışıyor: ", "   ⚠ clashes with: ") + first + (partners.Count > 1 ? $"  (+{partners.Count - 1})" : "");
         }
-        _status.Text = sel ?? _flash ?? Hint;
+        // Kısa bilgi mesajı (görüntü kaydedildi, kutu genişletildi…) süresince seçili elemanın önüne geçer; ölçüde ölçü önde.
+        _status.Text = (_view.MeasureMode ? sel ?? _flash : _flash ?? sel) ?? Hint;
         _status.ToolTip = _status.Text;
         _status.FontWeight = sel != null || _flash != null ? FontWeights.SemiBold : FontWeights.Normal;
         _status.Opacity = sel != null || _flash != null ? 0.95 : 0.6;
@@ -393,8 +482,10 @@ sealed partial class ViewerWindow : Window
             : L.T("🔒 Ücretsiz sürüm · Lisans al", "🔒 Free version · Get license");
         _btnLic.Visibility = st == LicenseState.Licensed ? Visibility.Collapsed : Visibility.Visible;
         _btnReload.Visibility = _host != null ? Visibility.Visible : Visibility.Collapsed;
+        _btnTol.Visibility = _clashOn ? Visibility.Visible : Visibility.Collapsed;
+        ((TextBlock)_btnTol.Child).Text = TolText;
         ((TextBlock)_btnReload.Child).Text = "⟳  " + L.T("Yenile", "Reload") + (_stale ? " •" : "");
-        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnShot, false), (_btnHelp, false) })
+        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnShot, false), (_btnHelp, false) })
         {
             ((TextBlock)b.Child).Foreground = new SolidColorBrush(on ? Colors.White : ink);
             b.Background = on ? new SolidColorBrush(Color.FromRgb(0x2B, 0x6C, 0xD8)) : new SolidColorBrush(Color.FromArgb(dark ? (byte)0x22 : (byte)0x10, ink.R, ink.G, ink.B));
@@ -437,7 +528,7 @@ sealed partial class ViewerWindow : Window
         i = Math.Clamp(i, 0, Palette.All.Length - 1);
         if (Palette.All[i].Colored && !License.FullFeatures)
         {
-            if (user) ShowLicense(L.T("Renkli ton", "Colored mode"));
+            if (user) ShowLicense(L.T($"{Palette.All[i].Tr} ton", $"{Palette.All[i].En} mode"));
             if (user) return;
             i = 0;
         }
@@ -463,7 +554,20 @@ sealed partial class ViewerWindow : Window
     Border MakeSwatch(int i)
     {
         var p = Palette.All[i];
-        Brush fill = p.Colored
+        Brush fill = p.Detailed
+            ? new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0), EndPoint = new Point(1, 1),
+                GradientStops =
+                {
+                    new GradientStop(Color.FromRgb(0xB5, 0xB3, 0xAE), 0), new GradientStop(Color.FromRgb(0xB5, 0xB3, 0xAE), 0.2),
+                    new GradientStop(Color.FromRgb(0xF6, 0xF4, 0xEE), 0.2), new GradientStop(Color.FromRgb(0xF6, 0xF4, 0xEE), 0.4),
+                    new GradientStop(Color.FromRgb(0x9A, 0xA3, 0xAD), 0.4), new GradientStop(Color.FromRgb(0x9A, 0xA3, 0xAD), 0.6),
+                    new GradientStop(Color.FromRgb(0xE3, 0xA3, 0x3A), 0.6), new GradientStop(Color.FromRgb(0xE3, 0xA3, 0x3A), 0.8),
+                    new GradientStop(Color.FromRgb(0x8E, 0x7C, 0xC3), 0.8), new GradientStop(Color.FromRgb(0x8E, 0x7C, 0xC3), 1),
+                },
+            }
+            : p.Colored
             ? new LinearGradientBrush
             {
                 StartPoint = new Point(0, 0), EndPoint = new Point(1, 1),
@@ -489,7 +593,10 @@ sealed partial class ViewerWindow : Window
             Width = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = fill,
             BorderBrush = new SolidColorBrush(p.Edge) { Opacity = 0.7 }, BorderThickness = new Thickness(1),
         };
-        string tip = p.Colored
+        string tip = p.Detailed
+            ? L.T("Detaylı: her eleman türü kendi renginde — duvar gri, kapı beyaz, tava metalik, cihazlar ve tesisat sistemleri renkli",
+                  "Detailed: every element type in its own color — walls gray, doors white, trays metallic, equipment and MEP systems colored")
+            : p.Colored
             ? L.T("Renkli: soğutma mavi · yangın kırmızı · üfleme magenta · emiş/dönüş yeşil", "Colored: cooling blue · fire red · supply magenta · return/exhaust green")
             : p.Name;
         var ring = new Border
@@ -516,9 +623,9 @@ sealed partial class ViewerWindow : Window
             var kv = File.ReadAllLines(SettingsPath).Select(l => l.Split('=', 2)).Where(a => a.Length == 2)
                 .ToDictionary(a => a[0].Trim(), a => a[1].Trim());
             double D(string k) => kv.TryGetValue(k, out var s) && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : double.NaN;
-            if (kv.TryGetValue("palette", out var ps) && int.TryParse(ps, out var pi)) _palIndex = pi;
-            if (kv.TryGetValue("hidden", out var hs)) foreach (var hn in hs.Split('|', StringSplitOptions.RemoveEmptyEntries)) _hidden.Add(hn);
-            if (kv.TryGetValue("side", out var sd)) _sideOpen = sd == "1";
+            // pv yoksa ayar "Detaylı" ton gelmeden önce yazılmış: bir kez yeni varsayılana geçilir, sonra kullanıcının seçimi korunur.
+            if (kv.TryGetValue("pv", out _) && kv.TryGetValue("palette", out var ps) && int.TryParse(ps, out var pi)) _palIndex = pi;
+            if (kv.TryGetValue("clashtol", out var ct) && int.TryParse(ct, out var cti) && Array.IndexOf(TolSteps, cti) >= 0) _clashTolMm = cti;
             if (kv.TryGetValue("tag", out var tg)) _tagOn = tg == "1";
             double l = D("left"), t = D("top"), w = D("width"), h = D("height");
             if (!double.IsNaN(w) && !double.IsNaN(h) && w > 200 && h > 150) { Width = w; Height = h; }
@@ -542,9 +649,8 @@ sealed partial class ViewerWindow : Window
             var ci = CultureInfo.InvariantCulture;
             File.WriteAllLines(SettingsPath, new[]
             {
-                $"palette={_palIndex}",
-                "hidden=" + string.Join("|", _hidden),
-                $"side={(_sideOpen ? 1 : 0)}",
+                $"palette={_palIndex}", "pv=2",
+                $"clashtol={_clashTolMm}",
                 $"tag={(_tagOn ? 1 : 0)}",
                 $"left={r.Left.ToString(ci)}", $"top={r.Top.ToString(ci)}",
                 $"width={r.Width.ToString(ci)}", $"height={r.Height.ToString(ci)}",

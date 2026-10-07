@@ -19,6 +19,18 @@ static class ClashGroup
         Containment = 20, Electrical = 21, MechEquipment = 30, Structure = 40;
 }
 
+/// <summary>"Detaylı renkli" tonda eleman rengi (gölgelendiricideki uDetail dizisinin indeksi, en çok 63).
+/// 1–4 SysColor ile aynı; tesisat sistemi tanınmazsa grup/kategori rengi.</summary>
+static class Detail
+{
+    public const byte General = 0,
+        Cooling = 1, Fire = 2, Supply = 3, Return = 4,
+        PipeHeating = 5, PipeDomestic = 6, PipeDrainage = 7, PipeOther = 8, DuctOther = 9, Metal = 10,
+        Wall = 11, Floor = 12, Ceiling = 13, Door = 14, Frame = 15, Concrete = 16, Stair = 17, Furniture = 18,
+        MechEquipment = 19, ElecEquipment = 20, Lighting = 21, Devices = 22, Sanitary = 23, Site = 24,
+        Count = 25;
+}
+
 /// <summary>GPU köşe biçimi (24 bayt): konum, normal (short, normalize), ton, eleman no (1 tabanlı).</summary>
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 struct SurfVertex
@@ -56,6 +68,7 @@ sealed class SceneData
 
     // Eleman başına (indeks = id-1) sistem bilgisi — "Renkli" ton ve çakışma denetimi için.
     public readonly List<byte> ElemColor = new();  // SysColor
+    public readonly List<byte> ElemDetail = new(); // Detail — "Detaylı" tonda rengi
     public readonly List<int> ElemGroup = new();   // ClashGroup; 0 = çakışma denetimine girmez
     public readonly List<uint> ElemCanon = new();  // izolasyon → taşıdığı boru/kanal (yoksa kendisi)
     public readonly HashSet<ulong> Connected = new(); // connector ile birbirine bağlı eleman çiftleri (PairKey)
@@ -68,6 +81,8 @@ sealed class SceneData
     public readonly List<long> ElemRevitId = new();  // Revit ElementId değeri (kendi belgesinde)
     public readonly List<byte> ElemDoc = new();      // → Docs indeksi (0 = ana model, sonrası bağlı modeller)
     public readonly List<object> Docs = new();       // Revit belgeleri (pencere türünü bilmez; Revit tarafı kullanır)
+    public readonly List<long> DocKeys = new();      // Docs ile aynı sıra: -1 ana model, yoksa bağlantı örneğinin ElementId'si
+    public readonly List<string> DocNames = new();   // Docs ile aynı sıra: dosya adı (sol üstteki model listesi)
     public readonly List<string> ElemTag = new();    // anlık etiket: kısa boyut ("300x100", "Ø50") — yoksa ""
 
     public int CatIndex(string name, byte disc = 0)
@@ -82,11 +97,26 @@ sealed class SceneData
     /// <summary>Kutu çerçevesinin dünya Z ekseni etrafındaki dönüşü (radyan): ölçüde X/Y kilidi PROJE eksenlerine göre.</summary>
     public double FrameAngle;
 
+    /// <summary>Kutu büyütmede yeni elemanlar eklenecek kopya (pencere eskisini çizmeye devam ederken güvenle doldurulur).</summary>
+    public SceneData CloneForAppend()
+    {
+        var s = new SceneData { FormatLength = FormatLength, FrameAngle = FrameAngle, Source = Source };
+        s.Vertices.AddRange(Vertices); s.Opaque.AddRange(Opaque); s.Glass.AddRange(Glass); s.Edges.AddRange(Edges);
+        s.Labels.AddRange(Labels); s.ElemColor.AddRange(ElemColor); s.ElemDetail.AddRange(ElemDetail); s.ElemGroup.AddRange(ElemGroup);
+        s.ElemCanon.AddRange(ElemCanon); s.Connected.UnionWith(Connected); s.Snaps.AddRange(Snaps);
+        s.CatNames.AddRange(CatNames); s.CatDisc.AddRange(CatDisc); s.ElemCat.AddRange(ElemCat); s.ElemRevitId.AddRange(ElemRevitId);
+        s.ElemDoc.AddRange(ElemDoc); s.Docs.AddRange(Docs); s.DocKeys.AddRange(DocKeys); s.DocNames.AddRange(DocNames); s.ElemTag.AddRange(ElemTag);
+        return s;
+    }
+
     public static ulong PairKey(uint a, uint b) => a < b ? ((ulong)a << 32) | b : ((ulong)b << 32) | a;
+
+    /// <summary>İlk açılan (görünen) kutu; okunan alan (BoxMin/Max) ön yükleme payıyla daha büyük olabilir.</summary>
+    public double[]? ViewMin, ViewMax;
 
     public double[] BoxMin = new double[3], BoxMax = new double[3]; // Revit'ten okunan kutu (yerel)
     public object? Context; // Revit tarafı bağlamı (belge, görünüm, çerçeve) — pencere içeriğine dokunmaz
-    public double Seconds;
+    public double Seconds, GeoSeconds, TriSeconds, InfoSeconds;   // okuma süresi ve dökümü (Revit geometri, üçgen+kenar, eleman bilgisi)
     public string Timing = ""; // okuma süresinin dökümü (teşhis için, bilgi yazısının ipucunda)
     public string Source = "";
     public int ElementCount => Labels.Count;

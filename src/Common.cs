@@ -25,18 +25,15 @@ static class AddinVersion
 /// <summary>Pencerenin Revit'ten istediği işler (Revit türleri içermez; test düzeneği null verir).</summary>
 interface IViewerHost
 {
-    /// <summary>Aynı çerçevede yeni kutu sınırlarıyla geometriyi yeniden okur.</summary>
-    void Recollect(object context, double[] min, double[] max, System.Action<SceneData?, string?> done);
+    /// <summary>Aynı çerçevede yeni kutu sınırlarıyla geometriyi okur. append verilirse onun elemanları korunur ve
+    /// yalnız henüz okunmamış elemanlar eklenir (kutu büyütme hızlı olsun); null ise her şey baştan okunur (Yenile).</summary>
+    void Recollect(object context, double[] min, double[] max, System.Action<SceneData?, string?> done, SceneData? append = null);
 
     /// <summary>PNG'yi Revit'e görüntü görünümü (Renderings) olarak ekler.</summary>
     void SaveImage(object context, string pngPath, System.Action<string> done);
 
     /// <summary>Bağlamın bu belgeden okunup okunmadığı (Revit'te model değişince "Yenile" düğmesini uyarmak için).</summary>
     bool IsFromDoc(object context, object doc);
-
-    /// <summary>Elemanın özellikleri (başlık, değer) — önce önemli olanlar, sonra diğer dolu parametreler.
-    /// done(null, hata) olabilir. Revit tarafında ExternalEvent ile okunur.</summary>
-    void GetInfo(object context, SceneData scene, uint sceneId, System.Action<System.Collections.Generic.List<(string name, string value, bool key)>?, string?> done);
 
     /// <summary>Elemanı Revit'te seç ve göster (yalnız ana modeldeki elemanlar).</summary>
     void ShowInRevit(object context, SceneData scene, uint sceneId, System.Action<string?> done);

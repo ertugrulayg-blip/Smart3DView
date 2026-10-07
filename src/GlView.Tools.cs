@@ -10,30 +10,42 @@ namespace Smart3DView;
 /// sağ üstte görünüm küpü (tam sağdan/soldan/önden/üstten…), imleç altındaki elemanın anlık etiketi.</summary>
 sealed unsafe partial class GlView
 {
-    // ---- filtre ----------------------------------------------------------------------------------------------------
+    // ---- model aç/kapa (sol üst) -------------------------------------------------------------------------------------
+    // Kullanıcı isteği (2026-10-07): kategori filtresi yerine sol üstte ana dosya ve bağlı modellerin adları; her biri
+    // tek tıkla komple gizlenir/gösterilir. Aynı model iki kez bağlıysa tek satır.
 
     ClashResult? _clashRes;
-    readonly HashSet<string> _hiddenCats = new(StringComparer.CurrentCultureIgnoreCase);
+    readonly HashSet<string> _hiddenModels = new(StringComparer.CurrentCultureIgnoreCase);
+    readonly List<(Rect r, string name)> _modelRects = new();
+    string? _modelHover;
 
-    /// <summary>Sahnedeki kategoriler ve eleman sayıları (ada göre sıralı).</summary>
-    public List<(string name, int count, int disc)> Categories()
+    /// <summary>Model listesinde bir satıra tıklandı (ad).</summary>
+    public event Action<string>? ModelToggled;
+
+    /// <summary>Sahnedeki modeller: ana model önce, sonra bağlantılar (ada göre tekil) ve eleman sayıları.</summary>
+    public List<(string name, int count, bool link)> Models()
     {
-        var res = new List<(string, int, int)>();
+        var res = new List<(string, int, bool)>();
         if (_scene == null) return res;
-        var cnt = new int[_scene.CatNames.Count];
-        foreach (var c in _scene.ElemCat) if (c < cnt.Length) cnt[c]++;
-        for (int i = 0; i < cnt.Length; i++) if (cnt[i] > 0) res.Add((_scene.CatNames[i], cnt[i], i < _scene.CatDisc.Count ? _scene.CatDisc[i] : 0));
-        res.Sort((a, b) => string.Compare(a.Item1, b.Item1, StringComparison.CurrentCultureIgnoreCase));
+        var s = _scene;
+        var cnt = new int[s.DocNames.Count];
+        foreach (var d in s.ElemDoc) if (d < cnt.Length) cnt[d]++;
+        var index = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+        for (int i = 0; i < s.DocNames.Count; i++)
+        {
+            if (cnt[i] == 0) continue;
+            string n = s.DocNames[i];
+            bool link = i < s.DocKeys.Count && s.DocKeys[i] != -1;
+            if (index.TryGetValue(n, out int k)) { var (nn, c, l) = res[k]; res[k] = (nn, c + cnt[i], l); }
+            else { index[n] = res.Count; res.Add((n, cnt[i], link)); }
+        }
         return res;
     }
 
-    /// <summary>Gizli kategori adları (pencereler ve Yenile arasında ada göre korunur).</summary>
-    public IReadOnlyCollection<string> HiddenCategories => _hiddenCats;
-
-    public void SetHiddenCategories(IEnumerable<string> names)
+    public void SetHiddenModels(IEnumerable<string> names)
     {
-        _hiddenCats.Clear();
-        foreach (var n in names) _hiddenCats.Add(n);
+        _hiddenModels.Clear();
+        foreach (var n in names) _hiddenModels.Add(n);
         if (_scene == null) return;
         ApplyHiddenBits();
         if (Selected > 0 && IsHidden(Selected)) Select(0);
@@ -43,17 +55,46 @@ sealed unsafe partial class GlView
 
     public bool IsHidden(uint id)
     {
-        if (_scene == null || id == 0 || id > _scene.ElemCat.Count) return false;
-        return _hiddenCats.Count > 0 && _hiddenCats.Contains(_scene.CatNames[_scene.ElemCat[(int)id - 1]]);
+        if (_scene == null || _hiddenModels.Count == 0 || id == 0 || id > _scene.ElemDoc.Count) return false;
+        int d = _scene.ElemDoc[(int)id - 1];
+        return d < _scene.DocNames.Count && _hiddenModels.Contains(_scene.DocNames[d]);
     }
 
     /// <summary>Çakışma denetimi için gizli eleman maskesi (indeks = id).</summary>
     public bool[]? HiddenMask()
     {
-        if (_scene == null || _hiddenCats.Count == 0) return null;
+        if (_scene == null || _hiddenModels.Count == 0) return null;
         var m = new bool[_scene.Labels.Count + 1];
         for (uint id = 1; id < m.Length; id++) m[id] = IsHidden(id);
         return m;
+    }
+
+    string? ModelHit(Point p)
+    {
+        foreach (var (r, name) in _modelRects) if (r.Contains(p)) return name;
+        return null;
+    }
+
+    void DrawModelList()
+    {
+        _modelRects.Clear();
+        if (_pText == 0) return;
+        var models = Models();
+        if (models.Count == 0) return;
+        double x = 10 * Dpi, y = 10 * Dpi;
+        GL.Disable(GL.DEPTH_TEST);
+        GL.Enable(GL.BLEND);
+        foreach (var (name, count, link) in models)
+        {
+            bool hidden = _hiddenModels.Contains(name);
+            string t = (hidden ? "☐  " : "☑  ") + (link ? "🔗 " : "") + name + $"  ({count:N0})";
+            var (_, w, h) = LabelTexture(t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag);
+            DrawTextAt(new Point(x, y), t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag, center: false);
+            _modelRects.Add((new Rect(x, y, w, h), name));
+            y += h + 3 * Dpi;
+        }
+        GL.Disable(GL.BLEND);
+        GL.Enable(GL.DEPTH_TEST);
     }
 
     void ApplyHiddenBits()
@@ -69,12 +110,12 @@ sealed unsafe partial class GlView
     /// çakıştıkları mavi, diğer çakışmalar soluk.</summary>
     void ApplyClashBits()
     {
-        for (int i = 1; i < _state.Length / 2; i++) _state[2 * i + 1] = 0;
+        for (int i = 1; i < _state.Length / 2; i++) _state[2 * i + 1] &= 0xFC;   // detay rengi (üst 6 bit) kalsın
         var r = _clashRes;
         if (r == null || _scene == null) return;
         var grp = _scene.ElemGroup;
         int G(uint id) => id > 0 && id <= grp.Count ? grp[(int)id - 1] : 0;
-        void Set(uint id, byte v) { if (2 * id + 1 < _state.Length) _state[2 * id + 1] = v; }
+        void Set(uint id, byte v) { if (2 * id + 1 < _state.Length) _state[2 * id + 1] = (byte)((_state[2 * id + 1] & 0xFC) | v); }
         if (Selected > 0 && r.Partners.TryGetValue(Selected, out var mine))
         {
             Set(Selected, 1);
