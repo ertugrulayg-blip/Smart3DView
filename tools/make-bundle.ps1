@@ -1,4 +1,4 @@
-﻿# Autodesk mağaza paketi: out\store\Smart3DView.bundle + Smart3DView-Help.html → out\Smart3DView-<sürüm>.zip
+﻿# Autodesk mağaza paketi: out\store\Smart3DView.bundle + Smart3DView-Help.html → out\Smart3DView-<sürüm>-store.zip
 # Mağaza kuralı: eklenti %AppData%\Autodesk\ApplicationPlugins\<Ad>.bundle altına kurulur; Revit PackageContents.xml'i
 # okuyup her <Components> bloğundaki .addin'i yükler. Revit YALNIZ SeriesMin'e bakar → her sürüme ayrı blok + ayrı
 # derleme (Contents\<yıl>\, o yılın RevitAPI.dll'ine karşı). Mağaza kendi kurulum dosyasını üretir; bu klasör yine de
@@ -17,7 +17,7 @@ $csproj  = Join-Path $proj "Smart3DView.csproj"
 $ver     = [regex]::Match((Get-Content $csproj -Raw), '<Version>([^<]+)</Version>').Groups[1].Value
 $stage   = Join-Path $root "out\store"
 $bundle  = Join-Path $stage "Smart3DView.bundle"
-$zip     = Join-Path $root "out\Smart3DView-$ver.zip"
+$zip     = Join-Path $root "out\Smart3DView-$ver-store.zip"
 $appName = "Smart3DView"
 $addinId = "e9df1ea9-a971-47dc-9114-30a8eae5f929"       # Smart3DView.addin.template ile AYNI kalmalı
 $upgrade = "{8C2D5A71-3E94-4B6F-A0D2-7F1E6C93B458}"      # sabit: tüm sürümler aynı ürün
