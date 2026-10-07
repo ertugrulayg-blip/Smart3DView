@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart3DView — Quick start &amp; help</title>
+<meta name="description" content="Smart3DView for Revit: quick start, controls, colored MEP mode, clash detection, section box editing, pictures, trial and license.">
+<style>
+  :root{--bg:#f6f8fb;--card:#fff;--text:#0f172a;--sub:#475569;--line:#e2e8f0;--brand:#1d4e89;--acc:#f59e0b;--blue:#2563eb}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+  header{background:linear-gradient(135deg,#0f2a4a,#1d4e89);color:#fff;padding:22px 20px}
+  header .in{max-width:860px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:24px}
+  header p{margin:2px 0 0;color:#cbd9ee;font-size:14px}
+  header nav a{color:#fff;font-weight:600;text-decoration:none;font-size:13px;opacity:.85}
+  header nav a.on{opacity:1;text-decoration:underline}
+  main{max-width:860px;margin:0 auto;padding:22px 20px 70px}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 18px;margin-bottom:8px;columns:2;column-gap:28px;font-size:14px}
+  .toc a{display:block;color:var(--blue);text-decoration:none;padding:2px 0}
+  h2{font-size:19px;margin:34px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+  h3{font-size:15px;margin:18px 0 6px}
+  p,li{color:var(--sub)}
+  li{margin:3px 0}
+  b,strong{color:var(--text)}
+  kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 Consolas,monospace;background:#fff;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:5px;padding:3px 6px;color:var(--text)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+  th{background:#eef2f7;color:var(--text)}
+  tr:last-child td{border-bottom:0}
+  .steps{counter-reset:s;list-style:none;padding:0}
+  .steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px 10px 48px;position:relative;margin:8px 0}
+  .steps li::before{content:counter(s);position:absolute;left:14px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;font-size:14px;color:#92400e;margin:12px 0}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+  footer{max-width:860px;margin:0 auto;padding:0 20px 30px;color:#94a3b8;font-size:12.5px}
+  a{color:var(--blue)}
+  [data-l]{display:none}
+  html[lang=en] [data-l=en], html[lang=tr] [data-l=tr]{display:block}
+  @media (max-width:640px){.toc{columns:1}}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>Smart3DView</h1>
+    <p data-l="en">Quick start &amp; help — fast 3D section box viewer for Revit</p>
+    <p data-l="tr">Hızlı başlangıç ve yardım — Revit için hızlı 3B kesit kutusu görüntüleyici</p></div>
+  <nav><a href="#" id="en">English</a> · <a href="#" id="tr">Türkçe</a></nav>
+</div></header>
+
+<!-- ============================== ENGLISH ============================== -->
+<main data-l="en">
+  <div class="toc">
+    <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
+    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a>
+    <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
+    <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
+  </div>
+
+  <h2 id="en-start">Quick start</h2>
+  <ol class="steps">
+    <li>In Revit open the <b>Add-Ins</b> tab and find the <b>Smart3DView</b> panel.</li>
+    <li>Select a few elements (pipes, ducts, a room's walls…) in any view — or see <a href="#en-open">other ways to choose the area</a>.</li>
+    <li>Click <b>Smart 3D View</b>. The area opens in its own window that you can move to a second screen.</li>
+    <li>Look around: <kbd>Shift</kbd> + middle-mouse drag orbits, middle-mouse drag pans, the wheel zooms. Pick a tone at the bottom right.</li>
+  </ol>
+  <p>Clicking the button again with a new selection updates the same window.</p>
+
+  <h2 id="en-open">Choosing what to open</h2>
+  <table>
+    <tr><th>When you click the button…</th><th>Smart3DView opens</th></tr>
+    <tr><td>Elements are selected</td><td>A box around the selection (+30 cm on every side).</td></tr>
+    <tr><td>Nothing is selected, a 3D view with an active section box</td><td>That section box.</td></tr>
+    <tr><td>Nothing is selected, a plan view</td><td>Drag a rectangle; the height comes from the plan's view range.</td></tr>
+  </table>
+  <p>Linked models are included. In a 3D view, elements and categories you have hidden stay hidden.</p>
+
+  <h2 id="en-nav">Navigating</h2>
+  <table>
+    <tr><th>Action</th><th>Mouse</th></tr>
+    <tr><td>Select an element</td><td>Left click (its name, type and ID appear at the bottom). <kbd>Esc</kbd> clears.</td></tr>
+    <tr><td>Orbit</td><td><kbd>Shift</kbd> + middle-button drag — around the selected element, otherwise around the point under the cursor.</td></tr>
+    <tr><td>Pan</td><td>Middle-button (or right-button) drag</td></tr>
+    <tr><td>Zoom</td><td>Mouse wheel, towards the cursor</td></tr>
+    <tr><td>Fit</td><td>Double-click or <kbd>F</kbd> (selected element, or everything). <kbd>Home</kbd> returns to the default 3D angle.</td></tr>
+  </table>
+
+  <h2 id="en-tones">Tones &amp; colored MEP mode</h2>
+  <p>The round buttons at the bottom right switch the look (keys <kbd>1</kbd>–<kbd>7</kbd>): <b>White, Light gray, Gray, Dark, Black, Paper</b> (white surfaces with black lines) and <b>Colored</b>. Faces cut by the section box are drawn as solid poché.</p>
+  <p><b>Colored</b> mode keeps the building gray and colors the services:</p>
+  <ul>
+    <li><span class="sw" style="background:#296be0"></span>Chilled / cooling water pipes and their insulation — blue</li>
+    <li><span class="sw" style="background:#e02121"></span>Fire protection pipes and sprinklers — red</li>
+    <li><span class="sw" style="background:#db33c7"></span>Supply air ducts — magenta</li>
+    <li><span class="sw" style="background:#2ead4c"></span>Return and exhaust air ducts — green</li>
+  </ul>
+  <p>The system is recognised from the Revit system classification (Supply Air, Return Hydronic, Fire Protection…) and from the system name (CHW, chilled, cooling, fire, sprinkler, return, exhaust…). Other systems stay gray.</p>
+
+  <h2 id="en-box">Editing the section box</h2>
+  <ol class="steps">
+    <li>Click <b>Box</b> (<kbd>B</kbd>). The box outline and six blue handles appear.</li>
+    <li>Drag a handle to move that face in or out — the cut updates instantly.</li>
+    <li>Turn on <b>Move</b> (<kbd>M</kbd>) — or hold <kbd>Ctrl</kbd> while dragging — to slide the whole box along that axis.</li>
+    <li><b>↺</b> resets the box.</li>
+  </ol>
+  <p>Inside the area that was read from Revit everything is instant. If you grow or move the box beyond it, the new area is read from Revit when you release the mouse (this takes a few seconds; the camera stays where it is).</p>
+
+  <h2 id="en-clash">Clash detection</h2>
+  <p>Click <b>Clash</b> (<kbd>C</kbd>). Elements that touch or overlap an element of a <b>different service</b> turn red, everything else fades. Click a red element to see what it clashes with.</p>
+  <p>Services checked against each other: cooling pipes, heating pipes, fire protection, domestic water, drainage, other pipes, supply ducts, return/exhaust ducts, other ducts, cable trays &amp; conduits, electrical devices, mechanical equipment, structural beams and columns.</p>
+  <p><b>Not</b> reported: parts of the same run (a pipe and its own elbow or coupling), elements connected to each other through connectors (e.g. an air handler and its duct), and a pipe or duct with its own insulation. Elements running completely inside another (a pipe inside a duct) are reported. Only the area inside the current box is checked; editing the box re-runs the check.</p>
+
+  <h2 id="en-pic">Take picture</h2>
+  <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>.</p>
+
+  <h2 id="en-measure">Measure</h2>
+  <p>Click <b>Measure</b> (<kbd>D</kbd>), then click two points. The cursor snaps like AutoCAD object snap, and the marker shows what it holds: <b>✕ corner/endpoint</b>, <b>○ edge midpoint</b>, <b>◉ pipe/duct axis</b> (arc centre), <b>// on an edge</b>, <b>◇ on a face</b>; the status bar names it too. The distance is shown on the line and, with its ΔX / ΔY / ΔZ parts, in the status bar, in the project's length units.</p>
+  <ul>
+    <li><kbd>X</kbd> / <kbd>Y</kbd> / <kbd>Z</kbd> (or the buttons) lock the second point to that project axis — e.g. <kbd>Z</kbd> gives the vertical distance between a pipe axis and a duct bottom. <b>Free</b> (or the same key again) removes the lock.</li>
+    <li><kbd>Backspace</kbd> removes the last measurement, <kbd>Delete</kbd> or the <b>Delete</b> button removes all, <kbd>Esc</kbd> cancels the current one / unlocks / leaves the tool. Measurements stay visible and are included in <b>Take picture</b>.</li>
+  </ul>
+
+  <h2 id="en-reload">Reload and multiple windows</h2>
+  <p>After you change the model in Revit, the <b>Reload</b> button turns orange. Click it (<kbd>R</kbd> or <kbd>F5</kbd>) to read the same area again: the camera, the edited box, the tone, clash mode and the selected element are kept. Every click on the <b>Smart 3D View</b> ribbon button opens a <b>new</b> window, so you can keep several areas open side by side.</p>
+
+  <h2 id="en-keys">Keyboard shortcuts</h2>
+  <table>
+    <tr><th>Key</th><th>Action</th><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>1</kbd>–<kbd>7</kbd></td><td>Tone</td><td><kbd>B</kbd></td><td>Box editing</td></tr>
+    <tr><td><kbd>F</kbd></td><td>Fit</td><td><kbd>M</kbd></td><td>Move box</td></tr>
+    <tr><td><kbd>Home</kbd></td><td>Default view</td><td><kbd>C</kbd></td><td>Clash detection</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Clear selection</td><td><kbd>P</kbd></td><td>Take picture</td></tr>
+    <tr><td><kbd>F1</kbd></td><td>This help</td><td><kbd>R</kbd> / <kbd>F5</kbd></td><td>Reload from Revit</td></tr>
+    <tr><td><kbd>D</kbd></td><td>Measure</td><td><kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd></td><td>Axis lock (while measuring)</td></tr>
+  </table>
+  <p>Tip: in Revit you can assign your own keyboard shortcut to the Smart 3D View button (View → User Interface → Keyboard Shortcuts).</p>
+
+  <h2 id="en-lic">Trial &amp; license</h2>
+  <ul>
+    <li><b>First 14 days:</b> every feature is available.</li>
+    <li><b>After the trial:</b> grayscale 3D viewing stays free. Colored mode, Clash detection, Take picture, Box editing and Measure need a full license.</li>
+    <li><b>Full license:</b> USD 4, one-time, perpetual, usable on 2 computers — <a href="https://schema-tools.net/smart3dview/">schema-tools.net/smart3dview</a>.</li>
+  </ul>
+  <h3>Activating</h3>
+  <ol class="steps">
+    <li>After buying, your key (<code>SMART3DVIEW-XXXX-XXXX-XXXX</code>) arrives in the purchase e-mail and in your Polar customer portal.</li>
+    <li>In the Smart3DView window click the <b>Trial / Free version</b> button at the bottom.</li>
+    <li>Paste the key and click <b>Activate</b>. Activation needs internet once; afterwards Smart3DView works offline (it re-checks the key about once a week when online).</li>
+  </ol>
+  <h3>Moving to another computer</h3>
+  <p>On the old computer open the license window and click <b>Remove license from this computer</b>, then activate on the new one. If the old computer is gone, remove its activation in the Polar customer portal.</p>
+
+  <h2 id="en-faq">Troubleshooting</h2>
+  <h3>“Could not start the 3D view … OpenGL 3.3”</h3>
+  <p>The graphics driver does not provide OpenGL 3.3 (common in remote desktop / virtual machines). Update the graphics driver or run Revit locally.</p>
+  <h3>“No 3D geometry found inside the box”</h3>
+  <p>The selection or box contains only 2D elements (lines, rooms, annotation), or everything is hidden in the 3D view. Select model elements or enlarge the area.</p>
+  <h3>Opening a large area takes a while</h3>
+  <p>The time is spent reading geometry from Revit. Hover the “elements · triangles · s” text at the bottom right to see where it goes. Selecting a smaller area is the quickest fix; once open, navigation is fast.</p>
+  <h3>A service has the wrong color</h3>
+  <p>Coloring follows the system classification and name. Send us the system type name and we will add it.</p>
+  <h3>The new version did not appear</h3>
+  <p>Revit loads add-ins only at start-up — restart Revit after updating.</p>
+
+  <h2 id="en-req">Requirements &amp; privacy</h2>
+  <p>Windows, Revit 2025, 2026 or 2027, a graphics card with OpenGL 3.3 (any GPU from the last decade, including integrated graphics).</p>
+  <p>Smart3DView works entirely on your computer; your model is never uploaded. The only network traffic is license activation and the weekly check with our payment provider Polar (api.polar.sh), which receives the license key and an anonymous device code — no user name, computer name or model data. See the <a href="https://schema-tools.net/privacy-policy.html">privacy policy</a>.</p>
+  <p>Support: <a href="https://schema-tools.net/contact.html">schema-tools.net/contact</a></p>
+</main>
+
+<!-- ============================== TÜRKÇE ============================== -->
+<main data-l="tr">
+  <div class="toc">
+    <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
+    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a>
+    <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
+    <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
+  </div>
+
+  <h2 id="tr-start">Hızlı başlangıç</h2>
+  <ol class="steps">
+    <li>Revit'te <b>Eklentiler (Add-Ins)</b> sekmesinde <b>Smart3DView</b> panelini bulun.</li>
+    <li>Herhangi bir görünümde birkaç eleman seçin (boru, kanal, bir odanın duvarları…) — ya da <a href="#tr-open">alanı seçmenin diğer yollarına</a> bakın.</li>
+    <li><b>Smart 3D View</b> düğmesine tıklayın. Alan, ikinci ekrana taşınabilen kendi penceresinde açılır.</li>
+    <li>Gezinin: <kbd>Shift</kbd> + orta tuşla sürükleme döndürür, orta tuşla sürükleme kaydırır, tekerlek yakınlaştırır. Sağ alttan bir ton seçin.</li>
+  </ol>
+  <p>Yeni bir seçimle düğmeye tekrar basmak aynı pencereyi günceller.</p>
+
+  <h2 id="tr-open">Neyin açılacağını seçmek</h2>
+  <table>
+    <tr><th>Düğmeye bastığınızda…</th><th>Smart3DView şunu açar</th></tr>
+    <tr><td>Seçili eleman varsa</td><td>Seçimin çevresindeki kutu (her yönde +30 cm).</td></tr>
+    <tr><td>Seçim yok, kesit kutusu açık bir 3B görünümdeyseniz</td><td>O kesit kutusu.</td></tr>
+    <tr><td>Seçim yok, plan görünümündeyseniz</td><td>Bir dikdörtgen çizin; yükseklik planın görünüm aralığından alınır.</td></tr>
+  </table>
+  <p>Bağlı (link) modeller de dahildir. 3B görünümde gizlediğiniz eleman ve kategoriler gizli kalır.</p>
+
+  <h2 id="tr-nav">Gezinme</h2>
+  <table>
+    <tr><th>İşlem</th><th>Fare</th></tr>
+    <tr><td>Eleman seçme</td><td>Sol tık (adı, tipi ve ID'si altta görünür). <kbd>Esc</kbd> seçimi bırakır.</td></tr>
+    <tr><td>Döndürme</td><td><kbd>Shift</kbd> + orta tuşla sürükleme — seçili eleman etrafında, yoksa imlecin altındaki nokta etrafında.</td></tr>
+    <tr><td>Kaydırma</td><td>Orta (ya da sağ) tuşla sürükleme</td></tr>
+    <tr><td>Yakınlaştırma</td><td>Tekerlek, imlecin olduğu yere doğru</td></tr>
+    <tr><td>Sığdırma</td><td>Çift tık ya da <kbd>F</kbd> (seçili eleman ya da tümü). <kbd>Home</kbd> varsayılan 3B açıya döner.</td></tr>
+  </table>
+
+  <h2 id="tr-tones">Tonlar ve renkli tesisat modu</h2>
+  <p>Sağ alttaki yuvarlak düğmeler görünümü değiştirir (<kbd>1</kbd>–<kbd>7</kbd> tuşları): <b>Beyaz, Açık gri, Gri, Koyu, Siyah, Kağıt</b> (beyaz yüzey, siyah çizgi) ve <b>Renkli</b>. Kesit kutusunun kestiği yüzler dolu poşe olarak çizilir.</p>
+  <p><b>Renkli</b> modda bina gri kalır, tesisatlar renklenir:</p>
+  <ul>
+    <li><span class="sw" style="background:#296be0"></span>Soğutma suyu boruları ve izolasyonları — mavi</li>
+    <li><span class="sw" style="background:#e02121"></span>Yangın boruları ve sprinkler'lar — kırmızı</li>
+    <li><span class="sw" style="background:#db33c7"></span>Üfleme (supply) kanalları — magenta</li>
+    <li><span class="sw" style="background:#2ead4c"></span>Emiş / dönüş / egzoz kanalları — yeşil</li>
+  </ul>
+  <p>Sistem, Revit'teki sistem sınıfından (Supply Air, Return Hydronic, Fire Protection…) ve sistem adından (CHW, chilled, soğutma, fire, sprinkler, return, exhaust…) anlaşılır. Diğer sistemler gri kalır.</p>
+
+  <h2 id="tr-box">Kesit kutusunu düzenleme</h2>
+  <ol class="steps">
+    <li><b>Kutu</b>'ya tıklayın (<kbd>B</kbd>). Kutu çizgileri ve altı mavi tutamaç görünür.</li>
+    <li>Bir tutamacı sürükleyerek o yüzü içeri/dışarı alın — kesit anında güncellenir.</li>
+    <li><b>Taşı</b>'yı açın (<kbd>M</kbd>) — ya da sürüklerken <kbd>Ctrl</kbd>'ye basılı tutun — bütün kutu o eksende kayar.</li>
+    <li><b>↺</b> kutuyu başa döndürür.</li>
+  </ol>
+  <p>Revit'ten okunan alanın içinde her şey anlıktır. Kutuyu bu alanın dışına büyütür ya da taşırsanız, fareyi bıraktığınızda yeni bölge Revit'ten okunur (birkaç saniye sürer; kamera yerinde kalır).</p>
+
+  <h2 id="tr-clash">Çakışma denetimi</h2>
+  <p><b>Çakışma</b>'ya tıklayın (<kbd>C</kbd>). <b>Farklı bir tesisattaki</b> elemana dokunan ya da onunla çakışan elemanlar kırmızı olur, diğerleri soluklaşır. Kırmızı bir elemana tıklayınca neyle çakıştığı yazar.</p>
+  <p>Birbirine karşı denetlenen gruplar: soğutma boruları, ısıtma boruları, yangın, temiz su, pis su, diğer borular, üfleme kanalları, emiş/dönüş kanalları, diğer kanallar, kablo tavaları ve conduit'ler, elektrik elemanları, mekanik ekipman, taşıyıcı kiriş ve kolonlar.</p>
+  <p>Çakışma <b>sayılmayanlar</b>: aynı hattın parçaları (boru ile kendi dirseği ya da kaplini), connector ile birbirine bağlı elemanlar (ör. klima santrali ve kanalı), bir boru/kanal ile kendi izolasyonu. Tamamen başka bir elemanın içinden geçenler (kanal içindeki boru) çakışma sayılır. Yalnız geçerli kutunun içi denetlenir; kutuyu düzenlemek denetimi yeniler.</p>
+
+  <h2 id="tr-pic">Görüntü al</h2>
+  <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır.</p>
+
+  <h2 id="tr-measure">Ölç</h2>
+  <p><b>Ölç</b>'e tıklayın (<kbd>D</kbd>), sonra iki nokta tıklayın. İmleç AutoCAD nesne yakalaması gibi yapışır, işaretin şekli neyi tuttuğunu gösterir: <b>✕ köşe/uç</b>, <b>○ kenar ortası</b>, <b>◉ boru/kanal ekseni</b> (yay merkezi), <b>// kenar üzeri</b>, <b>◇ yüzey</b>; durum çubuğunda da adı yazar. Mesafe çizginin üstünde, ΔX / ΔY / ΔZ bileşenleriyle birlikte durum çubuğunda, projenin uzunluk biriminde yazılır.</p>
+  <ul>
+    <li><kbd>X</kbd> / <kbd>Y</kbd> / <kbd>Z</kbd> (ya da düğmeler) ikinci noktayı o proje eksenine kilitler — ör. <kbd>Z</kbd> ile boru ekseni ile kanal altı arasındaki düşey mesafe. <b>Serbest</b> düğmesi (ya da aynı tuşa tekrar basmak) kilidi kaldırır.</li>
+    <li><kbd>Backspace</kbd> son ölçüyü, <kbd>Delete</kbd> ya da <b>Sil</b> düğmesi hepsini siler; <kbd>Esc</kbd> süren ölçüyü iptal eder / kilidi kaldırır / araçtan çıkar. Ölçüler ekranda kalır ve <b>Görüntü al</b>'a da girer.</li>
+  </ul>
+
+  <h2 id="tr-reload">Yenile ve birden çok pencere</h2>
+  <p>Revit'te modeli değiştirdiğinizde <b>Yenile</b> düğmesi turuncu olur. Tıklayın (<kbd>R</kbd> ya da <kbd>F5</kbd>), aynı alan yeniden okunur: kamera, düzenlediğiniz kutu, ton, çakışma modu ve seçili eleman korunur. Şeritteki <b>Smart 3D View</b> düğmesine her tıklama <b>yeni</b> bir pencere açar; birden çok alanı yan yana açık tutabilirsiniz.</p>
+
+  <h2 id="tr-keys">Klavye kısayolları</h2>
+  <table>
+    <tr><th>Tuş</th><th>İşlem</th><th>Tuş</th><th>İşlem</th></tr>
+    <tr><td><kbd>1</kbd>–<kbd>7</kbd></td><td>Ton</td><td><kbd>B</kbd></td><td>Kutu düzenleme</td></tr>
+    <tr><td><kbd>F</kbd></td><td>Sığdır</td><td><kbd>M</kbd></td><td>Kutuyu taşı</td></tr>
+    <tr><td><kbd>Home</kbd></td><td>Varsayılan görünüm</td><td><kbd>C</kbd></td><td>Çakışma denetimi</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Seçimi bırak</td><td><kbd>P</kbd></td><td>Görüntü al</td></tr>
+    <tr><td><kbd>F1</kbd></td><td>Bu yardım</td><td><kbd>R</kbd> / <kbd>F5</kbd></td><td>Revit'ten yenile</td></tr>
+    <tr><td><kbd>D</kbd></td><td>Ölç</td><td><kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd></td><td>Eksen kilidi (ölçerken)</td></tr>
+  </table>
+  <p>İpucu: Revit'te Smart 3D View düğmesine kendi kısayolunuzu atayabilirsiniz (Görünüm → Kullanıcı Arayüzü → Klavye Kısayolları).</p>
+
+  <h2 id="tr-lic">Deneme ve lisans</h2>
+  <ul>
+    <li><b>İlk 14 gün:</b> tüm özellikler açık.</li>
+    <li><b>Deneme sonrası:</b> gri 3B görüntüleme ücretsiz kalır. Renkli mod, Çakışma, Görüntü al, Kutu düzenleme ve Ölç tam lisans ister.</li>
+    <li><b>Tam lisans:</b> 4 USD, tek seferlik, süresiz, 2 bilgisayarda — <a href="https://schema-tools.net/smart3dview/">schema-tools.net/smart3dview</a>.</li>
+  </ul>
+  <h3>Etkinleştirme</h3>
+  <ol class="steps">
+    <li>Satın aldıktan sonra anahtarınız (<code>SMART3DVIEW-XXXX-XXXX-XXXX</code>) satın alma e-postasıyla ve Polar müşteri portalında gelir.</li>
+    <li>Smart3DView penceresinin altındaki <b>Deneme / Ücretsiz sürüm</b> düğmesine tıklayın.</li>
+    <li>Anahtarı yapıştırıp <b>Etkinleştir</b>'e basın. Etkinleştirme bir kez internet ister; sonrasında Smart3DView çevrimdışı çalışır (internete bağlıyken haftada bir anahtarı yeniden doğrular).</li>
+  </ol>
+  <h3>Başka bilgisayara taşıma</h3>
+  <p>Eski bilgisayarda lisans penceresini açıp <b>Bu bilgisayardaki lisansı kaldır</b>'a tıklayın, sonra yeni bilgisayarda etkinleştirin. Eski bilgisayar artık yoksa etkinleştirmesini Polar müşteri portalından kaldırın.</p>
+
+  <h2 id="tr-faq">Sorun giderme</h2>
+  <h3>“3B görüntü başlatılamadı … OpenGL 3.3”</h3>
+  <p>Ekran kartı sürücüsü OpenGL 3.3 sağlamıyor (uzak masaüstü / sanal makinelerde sık görülür). Sürücüyü güncelleyin ya da Revit'i yerel bilgisayarda çalıştırın.</p>
+  <h3>“Kutu içinde 3B geometri bulunamadı”</h3>
+  <p>Seçimde ya da kutuda yalnız 2B elemanlar (çizgi, oda, notasyon) var ya da her şey 3B görünümde gizli. Model elemanı seçin ya da alanı büyütün.</p>
+  <h3>Büyük bir alanın açılması uzun sürüyor</h3>
+  <p>Süre Revit'ten geometri okumaya gider. Sağ alttaki “eleman · üçgen · sn” yazısının üzerine gelince sürenin dökümü görünür. En hızlı çözüm daha küçük alan seçmek; açıldıktan sonra gezinme hızlıdır.</p>
+  <h3>Bir tesisat yanlış renkte</h3>
+  <p>Renk, sistem sınıfına ve adına göre belirlenir. Sistem tipinin adını bize gönderin, ekleyelim.</p>
+  <h3>Yeni sürüm görünmedi</h3>
+  <p>Revit eklentileri yalnız açılışta yükler — güncellemeden sonra Revit'i yeniden başlatın.</p>
+
+  <h2 id="tr-req">Gereksinimler ve gizlilik</h2>
+  <p>Windows, Revit 2025, 2026 ya da 2027, OpenGL 3.3 destekli ekran kartı (son on yıldaki her GPU, yerleşik grafik dahil).</p>
+  <p>Smart3DView tamamen bilgisayarınızda çalışır; modeliniz hiçbir yere yüklenmez. Tek ağ trafiği, ödeme altyapımız Polar (api.polar.sh) ile lisans etkinleştirme ve haftalık doğrulamadır; Polar'a yalnız lisans anahtarı ve anonim bir cihaz kodu gider — kullanıcı adı, bilgisayar adı ya da model verisi gitmez. Bkz. <a href="https://schema-tools.net/gizlilik-politikasi.html">gizlilik politikası</a>.</p>
+  <p>Destek: <a href="https://schema-tools.net/iletisim.html">schema-tools.net/iletisim</a></p>
+</main>
+
+<footer>© 2026 SchemaTools · Smart3DView</footer>
+<script>
+  // Dil: ?lang=tr|en > son seçim > tarayıcı dili. Eklenti F1 ile açarken ?lang= verir.
+  var q = (location.search.match(/[?&]lang=(tr|en)/) || [])[1];
+  var saved = null; try { saved = localStorage.getItem('s3dv-help-lang'); } catch (e) {}
+  var lang = q || saved || ((navigator.language || 'en').toLowerCase().indexOf('tr') === 0 ? 'tr' : 'en');
+  function set(l) {
+    lang = l; document.documentElement.lang = l;
+    document.getElementById('en').className = l === 'en' ? 'on' : '';
+    document.getElementById('tr').className = l === 'tr' ? 'on' : '';
+    document.title = l === 'tr' ? 'Smart3DView — Hızlı başlangıç ve yardım' : 'Smart3DView — Quick start & help';
+  }
+  document.getElementById('en').onclick = function (e) { e.preventDefault(); set('en'); try { localStorage.setItem('s3dv-help-lang', 'en'); } catch (x) {} };
+  document.getElementById('tr').onclick = function (e) { e.preventDefault(); set('tr'); try { localStorage.setItem('s3dv-help-lang', 'tr'); } catch (x) {} };
+  set(lang);
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>Smart3DView</Name>
+    <Assembly>__DLL__</Assembly>
+    <AddInId>e9df1ea9-a971-47dc-9114-30a8eae5f929</AddInId>
+    <FullClassName>Smart3DView.App</FullClassName>
+    <VendorId>SCHM</VendorId>
+    <VendorDescription>Smart3DView — fast grayscale 3D section box viewer</VendorDescription>
+  </AddIn>
+</RevitAddIns>

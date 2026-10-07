@@ -1,0 +1,6 @@
+# derleme çıktıları
+out/
+src/bin/
+src/obj/
+*.user
+.vs/

@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Revit 2025â€“2026: .NET 8; Revit 2027+: .NET 10 (RevitDir'deki yÄ±la gÃ¶re seÃ§ilir). -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(RevitDir)', 'Revit 20(2[7-9]|[3-9][0-9])'))">net10.0-windows</TargetFramework>
+    <AssemblyName>Smart3DView</AssemblyName>
+    <RootNamespace>Smart3DView</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RevitDir Condition="'$(RevitDir)' == ''">C:\Program Files\Autodesk\Revit 2026</RevitDir>
+    <!-- Her gÃ¼ncellemede artÄ±rÄ±lÄ±r; pencere baÅŸlÄ±ÄŸÄ±nda ve dÃ¼ÄŸme ipucunda gÃ¶rÃ¼nÃ¼r. -->
+    <Version>1.9.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildTime</_Parameter1>
+      <_Parameter2>$([System.DateTime]::Now.ToString("dd.MM.yyyy HH:mm"))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitDir)\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitDir)\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\help\index.html" Link="help\index.html" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Smart3DView.addin.template" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
