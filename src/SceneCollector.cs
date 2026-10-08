@@ -229,7 +229,6 @@ sealed class DocPass
     readonly Options? _trayOpt;   // kablo tavaları için geçici Fine görünümlü seçenekler (yalnız ana model)
     readonly Dictionary<long, uint>? _existing;            // kutu büyütme: zaten sahnede olanlar (Revit no → sahne no)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
-    readonly Options _coarse = new() { DetailLevel = ViewDetailLevel.Coarse, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();
     readonly Dictionary<long, bool> _skipStyle = new();
     readonly Dictionary<long, (SysColor, int)> _sysTypeInfo = new();
@@ -274,11 +273,7 @@ sealed class DocPass
             if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
             GeometryElement? ge;
             long tg = Stopwatch.GetTimestamp();
-            // Bağlı modelde düz tavalar Fine okunamıyor (kutu gelir) → fittingleri de Coarse: hat baştan sona aynı görünsün
-            // (kullanıcı isteği 2026-10-08, "hiç olmazsa bütünlük").
-            var opt = _trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt
-                : _linkName != null && bic == BuiltInCategory.OST_CableTrayFitting ? _coarse : _opt;
-            try { ge = e.get_Geometry(opt); } catch { continue; }
+            try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
             finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
             if (ge == null) continue;
             _tone = Horizontal.Contains(bic) ? Tone.Horizontal
