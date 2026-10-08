@@ -79,6 +79,7 @@ sealed class SceneData
     public readonly List<byte> CatDisc = new();      // kategori disiplini: 0 Mimari, 1 Statik, 2 Mekanik, 3 Elektrik
     public readonly List<ushort> ElemCat = new();    // → CatNames indeksi
     public readonly List<long> ElemRevitId = new();  // Revit ElementId değeri (kendi belgesinde)
+    public readonly List<string> ElemUid = new();    // Revit UniqueId (kalıcı; web'de ayar/yorum eşlemesi için)
     public readonly List<byte> ElemDoc = new();      // → Docs indeksi (0 = ana model, sonrası bağlı modeller)
     public readonly List<object> Docs = new();       // Revit belgeleri (pencere türünü bilmez; Revit tarafı kullanır)
     public readonly List<long> DocKeys = new();      // Docs ile aynı sıra: -1 ana model, yoksa bağlantı örneğinin ElementId'si
@@ -105,7 +106,7 @@ sealed class SceneData
         s.Labels.AddRange(Labels); s.ElemColor.AddRange(ElemColor); s.ElemDetail.AddRange(ElemDetail); s.ElemGroup.AddRange(ElemGroup);
         s.ElemCanon.AddRange(ElemCanon); s.Connected.UnionWith(Connected); s.Snaps.AddRange(Snaps);
         s.CatNames.AddRange(CatNames); s.CatDisc.AddRange(CatDisc); s.ElemCat.AddRange(ElemCat); s.ElemRevitId.AddRange(ElemRevitId);
-        s.ElemDoc.AddRange(ElemDoc); s.Docs.AddRange(Docs); s.DocKeys.AddRange(DocKeys); s.DocNames.AddRange(DocNames); s.ElemTag.AddRange(ElemTag);
+        s.ElemUid.AddRange(ElemUid); s.ElemDoc.AddRange(ElemDoc); s.Docs.AddRange(Docs); s.DocKeys.AddRange(DocKeys); s.DocNames.AddRange(DocNames); s.ElemTag.AddRange(ElemTag);
         return s;
     }
 

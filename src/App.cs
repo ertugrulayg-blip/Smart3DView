@@ -26,6 +26,18 @@ public class App : IExternalApplication
         // F1: Revit, düğmenin üzerindeyken çevrimiçi hızlı başlangıç sayfasını açar (Autodesk yönergesi: contextual help).
         button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
         panel.AddItem(button);
+        // Tüm model → Smart3DView Web (.glb, bilgisayarda kalır). Seçilen bağlı modellerle, dilim dilim.
+        var web = new PushButtonData("Smart3DViewWeb", L.T("Web'e\naktar", "Export\nto web"), dll, typeof(WebExportCommand).FullName)
+        {
+            ToolTip = L.T(
+                "Tüm modeli (seçtiğiniz bağlı modellerle) tek bir .glb dosyasına aktarır; Smart3DView Web ile tarayıcıda açılır. Dosya bilgisayarınızda kalır. Okuma sırasında Revit kullanılabilir, Esc ile iptal edilir.",
+                "Exports the whole model (with the linked models you choose) to a single .glb file to open in the browser with Smart3DView Web. The file stays on your computer. Revit stays usable while reading; Esc cancels.")
+                + "\n\n" + L.T("Sürüm: ", "Version: ") + AddinVersion.Text,
+            LargeImage = Icons.Globe(32),
+            Image = Icons.Globe(16),
+        };
+        web.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
+        panel.AddItem(web);
         RevitBridge.Event = ExternalEvent.Create(new RevitBridge());
         // Model değişince açık pencere "Yenile" düğmesini uyarır. Kendi işlemlerimiz (Görüntü al → ImageView) sayılmaz.
         app.ControlledApplication.DocumentChanged += (_, e) =>
@@ -60,6 +72,33 @@ static class Icons
             {
                 var dash = new Pen(new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)), 1) { DashStyle = new DashStyle(new double[] { 2, 2 }, 0) };
                 dc.DrawRectangle(null, dash, new Rect(P(2.5, 2.5), P(29.5, 29.5)));
+            }
+        }
+        var bmp = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(visual);
+        bmp.Freeze();
+        return bmp;
+    }
+
+    /// <summary>Küre (enlem/boylam çizgileri) — "Web'e aktar".</summary>
+    public static ImageSource Globe(int px)
+    {
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            double s = px / 32.0;
+            var c = new Point(16 * s, 16 * s);
+            double r = 12.5 * s;
+            var pen = new Pen(new SolidColorBrush(Color.FromRgb(0x1D, 0x4E, 0x89)), System.Math.Max(1, 1.4 * s));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(0xDC, 0xEB, 0xFA)), pen, c, r, r);
+            dc.DrawEllipse(null, pen, c, r * 0.45, r);
+            dc.DrawLine(pen, new Point(c.X, c.Y - r), new Point(c.X, c.Y + r));
+            dc.DrawLine(pen, new Point(c.X - r, c.Y), new Point(c.X + r, c.Y));
+            if (px >= 24)
+            {
+                double y = r * 0.55, x = System.Math.Sqrt(r * r - y * y);
+                dc.DrawLine(pen, new Point(c.X - x, c.Y - y), new Point(c.X + x, c.Y - y));
+                dc.DrawLine(pen, new Point(c.X - x, c.Y + y), new Point(c.X + x, c.Y + y));
             }
         }
         var bmp = new RenderTargetBitmap(px, px, 96, 96, PixelFormats.Pbgra32);

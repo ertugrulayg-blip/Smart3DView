@@ -75,7 +75,7 @@ sealed partial class ViewerWindow : Window
     readonly TextBlock _info = new() { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 10, 0) };
     readonly StackPanel _tools = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     readonly StackPanel _swatches = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-    readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnShot, _btnHelp;
+    readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnWeb, _btnShot, _btnHelp;
     // Çakışma toleransı (mm): yalnız birbirinin içine bundan derin giren elemanlar çakışır; 0 = dokunma da sayılır.
     static readonly int[] TolSteps = { 5, 10, 25, 50, 0 };
     int _clashTolMm = 5;
@@ -129,12 +129,15 @@ sealed partial class ViewerWindow : Window
                 "Show clashing elements between different services in red/blue — overlaps below the tolerance and touching elements are ignored, as are parts of the same run  (C)"), () => _ = ToggleClash());
         _btnTol = MakeTool("", L.T("Çakışma toleransı: elemanlar birbirinin içine bundan fazla girerse çakışma sayılır — değen, yaslanan, üstüne oturan elemanlar sayılmaz. Tıkla: 5 → 10 → 25 → 50 mm → dokunma da sayılsın",
                                   "Clash tolerance: elements count as clashing only if they overlap by more than this — touching, resting or mounted elements are ignored. Click: 5 → 10 → 25 → 50 mm → touching counts too"), CycleTol);
+        _btnWeb = MakeTool("🌐  " + L.T("Web'e aktar", "Export to web"),
+            L.T("Bu pencerede açık olanı (gizlenen modeller hariç) .glb dosyasına kaydeder; Smart3DView Web ile tarayıcıda açılır. Tüm model için Revit şeridindeki \"Web'e aktar\" düğmesi.",
+                "Saves what is open in this window (hidden models excluded) to a .glb file to open in the browser with Smart3DView Web. For the whole model use \"Export to web\" on the Revit ribbon."), () => _ = ExportCurrent());
         _btnShot = MakeTool("📷  " + L.T("Görüntü al", "Take picture"),
             L.T("Görüntüyü yüksek çözünürlükte Revit'e kaydet (Proje Tarayıcısı → Renderings)  (P)",
                 "Save the view in high resolution to Revit (Project Browser → Renderings)  (P)"), TakePicture);
         _btnLic = MakeTool("", L.T("Lisans durumu / satın al", "License status / buy"), () => ShowLicense(null));
         _btnHelp = MakeTool("?", L.T("Hızlı başlangıç ve yardım  (F1)", "Quick start and help  (F1)"), Help.Open);
-        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnShot, _btnHelp }) _tools.Children.Add(b);
+        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnWeb, _btnShot, _btnHelp }) _tools.Children.Add(b);
         // Alt düğmeler çubuğa eklenmez: ana düğmenin ÜSTÜNDE ayrı bir şerit olarak açılır (kullanıcı isteği 2026-10-08).
         _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
@@ -440,6 +443,25 @@ sealed partial class ViewerWindow : Window
 
     /// <summary>Görüntünün nereye kaydedildiğini açıkça gösterir (kullanıcı geri bildirimi, 2026-10-07: "fotoğraf
     /// çekiyor mu bilmiyorum, nereye atıyor göremiyorum"): Revit'teki yeri + PNG dosyası, aç / klasörü aç düğmeleri.</summary>
+    /// <summary>Web'e aktar: yalnız bu pencerede açık olan (kullanıcı isteği 2026-10-08); sol üstte gizlenen modeller
+    /// dahil edilmez. Revit'e dokunmaz — okunmuş sahne doğrudan yazılır.</summary>
+    async Task ExportCurrent()
+    {
+        if (_scene == null || !RequireFull(L.T("Web'e aktar", "Export to web"))) return;
+        string? path = WebExport.AskPath(this, _docTitle + " - 3D");
+        if (path == null) { _view.FocusGl(); return; }
+        var s = _scene;
+        var hidden = new System.Collections.Generic.HashSet<string>(_hidden, StringComparer.CurrentCultureIgnoreCase);
+        bool Include(int e) => hidden.Count == 0 || !(e < s.ElemDoc.Count && s.ElemDoc[e] < s.DocNames.Count && hidden.Contains(s.DocNames[s.ElemDoc[e]]));
+        int count = 0;
+        for (int e = 0; e < s.ElementCount; e++) if (Include(e)) count++;
+        Flash(L.T("Dosya yazılıyor…", "Writing the file…"));
+        try { await WebExport.Write(s, path, Include); }
+        catch (Exception ex) { Flash(L.T("Dosya yazılamadı: ", "Could not write the file: ") + ex.Message); return; }
+        Flash(L.T("Web'e aktarıldı: ", "Exported to web: ") + Path.GetFileName(path));
+        WebExport.ShowSaved(this, IntPtr.Zero, path, count);
+    }
+
     void PictureSaved(string? revitMsg, string path)
     {
         var w = new Window
@@ -604,7 +626,7 @@ sealed partial class ViewerWindow : Window
         _btnReload.Visibility = _host != null ? Visibility.Visible : Visibility.Collapsed;
         ((TextBlock)_btnTol.Child).Text = TolText;
         ((TextBlock)_btnReload.Child).Text = "⟳  " + L.T("Yenile", "Reload") + (_stale ? " •" : "");
-        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnShot, false), (_btnHelp, false) })
+        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnWeb, false), (_btnShot, false), (_btnHelp, false) })
         {
             ((TextBlock)b.Child).Foreground = new SolidColorBrush(on ? Colors.White : ink);
             b.Background = on ? new SolidColorBrush(Color.FromRgb(0x2B, 0x6C, 0xD8)) : new SolidColorBrush(Color.FromArgb(dark ? (byte)0x22 : (byte)0x10, ink.R, ink.G, ink.B));

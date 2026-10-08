@@ -58,7 +58,7 @@ sealed class SceneJob
     readonly SceneCollector.Ctx _ctx;
     readonly List<(DocPass pass, List<ElementId> ids)> _work = new();
     readonly List<ElementId> _trays = new();
-    int _pass, _pos, _done;
+    int _pass, _pos, _done, _host = -1;   // _host: ana modelin _work sırası (seçilmediyse -1)
     bool _finished;
 
     public int Total { get; }
@@ -67,7 +67,8 @@ sealed class SceneJob
     /// <summary>Şimdiye kadar eleman başına geçen süre (kalan süre tahmini için).</summary>
     public double SecondsPerElement => _done == 0 ? 0 : _ctx.Watch.Elapsed.TotalSeconds / _done;
 
-    public SceneJob(Document doc, View? activeView, ClipBox box, SceneData? prev)
+    /// <param name="include">Verilirse yalnız true dönen belgeler okunur (li null = ana model). Web'e aktarımda seçilen modeller.</param>
+    public SceneJob(Document doc, View? activeView, ClipBox box, SceneData? prev, Func<RevitLinkInstance?, Document, bool>? include = null)
     {
         _doc = doc; _box = box;
         var scene = prev?.CloneForAppend() ?? new SceneData();
@@ -87,6 +88,7 @@ sealed class SceneJob
 
         foreach (var (key, d, toLocal, li) in passes)
         {
+            if (include != null && !include(li, d)) continue;
             int di = -1;
             for (int k = 0; k < scene.Docs.Count && k < scene.DocKeys.Count; k++)
                 if (scene.DocKeys[k] == key && ReferenceEquals(scene.Docs[k], d)) { di = k; break; }
@@ -107,6 +109,7 @@ sealed class SceneJob
             }
             var pass = new DocPass(_ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, (byte)di, null, existing);
             var ids = pass.Prepare();
+            if (li == null) _host = _work.Count;
             _work.Add((pass, ids));
             Total += ids.Count;
         }
@@ -124,7 +127,7 @@ sealed class SceneJob
             while (_pass < _work.Count)
             {
                 var (pass, ids) = _work[_pass];
-                bool host = _pass == 0;
+                bool host = _pass == _host;
                 while (_pos < ids.Count)
                 {
                     var id = ids[_pos++];
@@ -135,7 +138,7 @@ sealed class SceneJob
                 if (!host) pass.Finish();
                 _pass++; _pos = 0;
             }
-            if (_work.Count > 0) ReadHostTrays(_work[0].pass);
+            if (_host >= 0) ReadHostTrays(_work[_host].pass);
             Complete();
             _finished = true;
             return true;
@@ -350,6 +353,7 @@ sealed class DocPass
         scene.Labels.Add(Label(e, cat));
         scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name, Discipline(bic)));
         scene.ElemRevitId.Add(e.Id.Value);
+        scene.ElemUid.Add(e.UniqueId);
         scene.ElemDoc.Add(_docIdx);
         var (color, group, host) = QuickClassify(e, bic);
         scene.ElemTag.Add("");

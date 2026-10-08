@@ -14,7 +14,8 @@ static class GlbWriter
 {
     const float Ft = 0.3048f;
 
-    public static void Write(SceneData s, string path)
+    /// <param name="include">Verilirse yalnız true dönen elemanlar yazılır (ör. pencerede gizlenen modeller atlanır).</param>
+    public static void Write(SceneData s, string path, Func<int, bool>? include = null)
     {
         int n = s.Labels.Count;
         // Eleman başına üçgen listeleri (opak / cam ayrı ilkel).
@@ -127,6 +128,7 @@ static class GlbWriter
 
         for (int e = 0; e < n; e++)
         {
+            if (include != null && !include(e)) continue;
             var prims = new List<object>();
             int det = e < s.ElemDetail.Count ? s.ElemDetail[e] : 0;
             if (opaque[e] is { Count: > 0 } o) prims.Add(Primitive(o, MatFor(det)));
@@ -140,6 +142,7 @@ static class GlbWriter
                 ["detail"] = det,
             };
             if (e < s.ElemRevitId.Count) extras["revitId"] = s.ElemRevitId[e];
+            if (e < s.ElemUid.Count) extras["uniqueId"] = s.ElemUid[e];
             nodes.Add(new { name = s.Labels[e], mesh = meshes.Count - 1, extras });
             children.Add(nodes.Count - 1);
         }

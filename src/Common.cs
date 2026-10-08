@@ -61,4 +61,6 @@ static class ModelWatch
 static class Product
 {
     public const string Name = "Smart3DView";
+    /// <summary>Smart3DView Web görüntüleyicisi (.glb dosyasını tarayıcıda yerelde açar).</summary>
+    public const string WebViewerUrl = "https://ertugrulayg-blip.github.io/smart3dview-web/viewer/";
 }
