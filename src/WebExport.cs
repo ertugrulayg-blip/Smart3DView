@@ -154,6 +154,8 @@ sealed class ExportProgressWindow : Window
 {
     readonly TextBlock _text = new() { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
     readonly ProgressBar _bar = new() { Height = 14, Minimum = 0, Maximum = 100, Width = 380 };
+    readonly TextBlock _model = new() { Margin = new Thickness(0, 6, 0, 0), FontSize = 11, Opacity = 0.75, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 380 };
+    readonly TextBlock _slow = new() { Margin = new Thickness(0, 2, 0, 0), FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 380, Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC2, 0x41, 0x0C)), Visibility = Visibility.Collapsed };
     readonly ReadControl _ctl;
 
     public ExportProgressWindow(IntPtr ownerHwnd, ReadControl ctl)
@@ -170,6 +172,8 @@ sealed class ExportProgressWindow : Window
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14) };
         stack.Children.Add(_text);
         stack.Children.Add(_bar);
+        stack.Children.Add(_model);
+        stack.Children.Add(_slow);
         stack.Children.Add(new TextBlock
         {
             Text = L.T("Revit'te çalışmaya devam edebilirsiniz.", "You can keep working in Revit."),
@@ -193,6 +197,16 @@ sealed class ExportProgressWindow : Window
     }
 
     public void SetText(string t) => _text.Text = t;
+
+    /// <summary>O an okunan model ve yavaş eleman uyarısı — hangi bağlı modelin ağır olduğu görülsün, gerekirse iptal edip
+    /// o modelin işaretini kaldırarak yeniden aktarılsın.</summary>
+    public void SetDetail(string model, string? slow)
+    {
+        _model.Text = L.T("Model: ", "Model: ") + model;
+        if (slow == null) return;
+        _slow.Text = L.T("Yavaş eleman: ", "Slow element: ") + slow + L.T(" — bu model gerekmiyorsa İptal edip işaretini kaldırarak yeniden aktarın.", " — if you don't need this model, cancel and export again with it unticked.");
+        _slow.Visibility = Visibility.Visible;
+    }
 
     public void SetProgress(int done, int total)
     {

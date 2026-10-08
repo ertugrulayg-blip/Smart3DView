@@ -31,6 +31,8 @@ sealed class ReadControl
     public System.Func<int, double, bool>? Confirm;
     /// <summary>Okunan, toplam.</summary>
     public System.Action<int, int>? Progress;
+    /// <summary>O an okunan model ve son yavaş eleman notu (teşhis: hangi bağlı model ağır — 2026-10-08).</summary>
+    public System.Action<string, string?>? Detail;
 }
 
 /// <summary>Pencerenin Revit'ten istediği işler (Revit türleri içermez; test düzeneği null verir).</summary>

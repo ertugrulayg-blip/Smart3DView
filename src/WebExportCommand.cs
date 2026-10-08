@@ -56,6 +56,7 @@ public class WebExportCommand : IExternalCommand
         var ctl = new ReadControl();
         var win = new ExportProgressWindow(hwnd, ctl);
         ctl.Progress = win.SetProgress;
+        ctl.Detail = win.SetDetail;
         win.Show();
         _running = true;
 

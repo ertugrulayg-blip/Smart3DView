@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
@@ -51,12 +52,47 @@ static class SceneCollector
 /// <see cref="Step"/> verilen süre dolana kadar eleman okur ve döner → arada Revit ve pencere mesajlarını işler,
 /// ilerleme gösterilir, Esc iptal eder. Ana modelin düz tavaları en sona bırakılır: geçici Fine görünüm bir işlem
 /// (transaction) ister ve işlem tek dilim içinde açılıp geri alınmalı.</summary>
-sealed class SceneJob
+sealed class SceneJob : IDisposable
 {
+    // Bekçi (kullanıcı raporu 2026-10-08: bir elemanda dakikalarca takılıp Revit kapatılınca hangi eleman olduğu
+    // bilinmiyordu): okunan eleman bir alanda tutulur; arka plan zamanlayıcısı 10 sn'den uzun sürerse eleman BİTMEDEN
+    // günlüğe yazar. Revit API'sine dokunmaz, yalnız metni dosyaya ekler.
+    string? _cur;                 // "model · kategori · ID"
+    long _curStart;               // Stopwatch zaman damgası
+    bool _curLogged;
+    System.Threading.Timer? _watch;
+
+    void Watch(object? _)
+    {
+        var cur = _cur;
+        if (cur == null || _curLogged) return;
+        double s = SceneCollector.Ctx.Since(Interlocked.Read(ref _curStart));
+        if (s < 10) return;
+        _curLogged = true;
+        AppendLog($"STILL READING after {s:0} s: {cur}");
+    }
+
+    static void AppendLog(string line)
+    {
+        try
+        {
+            string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Product.Name);
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "slow-elements.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}\t{line}\r\n");
+        }
+        catch { }
+    }
+
+    /// <summary>Bekçiyi başlatır (dilimli okumalarda).</summary>
+    public void StartWatch() => _watch ??= new System.Threading.Timer(Watch, null, 2000, 2000);
+
+    public void Dispose() { _watch?.Dispose(); _watch = null; _cur = null; }
+
     readonly Document _doc;
     readonly ClipBox _box;
     readonly SceneCollector.Ctx _ctx;
     readonly List<(DocPass pass, List<ElementId> ids)> _work = new();
+    readonly List<string> _titles = new();   // _work ile aynı sıra: model adı
     readonly List<ElementId> _trays = new();
     int _pass, _pos, _done, _host = -1;   // _host: ana modelin _work sırası (seçilmediyse -1)
     bool _finished;
@@ -111,9 +147,27 @@ sealed class SceneJob
             var ids = pass.Prepare();
             if (li == null) _host = _work.Count;
             _work.Add((pass, ids));
+            _titles.Add(d.Title);
             Total += ids.Count;
         }
         _ctx.Watch.Stop();
+    }
+
+    const double SlowSeconds = 5;
+
+    /// <summary>O an okunan model.</summary>
+    public string CurrentModel => _pass < _titles.Count ? _titles[_pass] : "";
+    /// <summary>Son yavaş eleman (model · kategori · ID · süre); yoksa null.</summary>
+    public string? SlowNote { get; private set; }
+
+    /// <summary>Tek elemanı okumak uzun sürdü: notu tut ve %LOCALAPPDATA%\Smart3DView\slow-elements.log'a yaz
+    /// (kullanıcı raporu 2026-10-08: tüm model aktarımında bağlı modelde eleman başına ~2 dk).</summary>
+    void NoteSlow(string model, Document d, ElementId id, double seconds)
+    {
+        string cat = "";
+        try { cat = d.GetElement(id)?.Category?.Name ?? ""; } catch { }
+        SlowNote = $"{model} · {cat} · ID {id.Value} · {seconds:0} s";
+        AppendLog(SlowNote);
     }
 
     /// <summary>En fazla <paramref name="seconds"/> çalışır (eleman sınırında durur); iş bittiyse true.</summary>
@@ -132,7 +186,19 @@ sealed class SceneJob
                 {
                     var id = ids[_pos++];
                     _done++;
+                    long te = Stopwatch.GetTimestamp();
+                    if (_watch != null)
+                    {
+                        string cat = "";
+                        try { cat = pass.Doc.GetElement(id)?.Category?.Name ?? ""; } catch { }
+                        Interlocked.Exchange(ref _curStart, te);
+                        _curLogged = false;
+                        _cur = $"{_titles[_pass]} · {cat} · ID {id.Value}";
+                    }
                     if (!pass.Process(id, deferTrays: host)) _trays.Add(id);
+                    _cur = null;
+                    double el = SceneCollector.Ctx.Since(te);
+                    if (el > SlowSeconds) NoteSlow(_titles[_pass], pass.Doc, id, el);
                     if (SceneCollector.Ctx.Since(t0) > seconds) return false;
                 }
                 if (!host) pass.Finish();
@@ -141,6 +207,7 @@ sealed class SceneJob
             if (_host >= 0) ReadHostTrays(_work[_host].pass);
             Complete();
             _finished = true;
+            Dispose();
             return true;
         }
         finally { _ctx.Watch.Stop(); }
@@ -279,6 +346,7 @@ sealed class DocPass
     readonly byte _docIdx;
     /// <summary>Ana model düz tavaları için geçici Fine görünümlü seçenekler (SceneJob son dilimde verir).</summary>
     public Options? TrayOpt;
+    public Document Doc => _doc;
     readonly Dictionary<long, uint>? _existing;            // kutu büyütme: zaten sahnede olanlar (Revit no → sahne no)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();

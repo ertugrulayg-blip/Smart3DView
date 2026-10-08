@@ -82,16 +82,18 @@ sealed class RevitHost : IViewerHost
     /// <summary>İşi dilim dilim yürütür: her dilimden sonra Revit'e bırakır, ilerlemeyi bildirir, iptale bakar.</summary>
     static void Run(SceneJob job, Document doc, ReadControl? ctl, string cancelled, Action<SceneData?, string?> done, Action<SceneData> complete)
     {
+        if (ctl != null) job.StartWatch();
         void Next(UIApplication _)
         {
-            if (!doc.IsValidObject) { done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
-            if (ctl?.Cancel == true) { done(null, cancelled); return; }
+            if (!doc.IsValidObject) { job.Dispose(); done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
+            if (ctl?.Cancel == true) { job.Dispose(); done(null, cancelled); return; }
             bool finished;
             try { finished = job.Step(ctl == null ? double.PositiveInfinity : SliceSeconds); }
-            catch (Exception ex) { done(null, ex.Message); return; }
+            catch (Exception ex) { job.Dispose(); done(null, ex.Message); return; }
             if (!finished)
             {
                 ctl?.Progress?.Invoke(job.Done, job.Total);
+                ctl?.Detail?.Invoke(job.CurrentModel, job.SlowNote);
                 RevitBridge.Post(Next);   // sıradaki dilim Revit bir sonraki boşta kaldığında
                 return;
             }
