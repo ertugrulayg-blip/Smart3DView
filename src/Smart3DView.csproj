@@ -13,7 +13,7 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RevitDir Condition="'$(RevitDir)' == ''">C:\Program Files\Autodesk\Revit 2026</RevitDir>
     <!-- Her güncellemede artırılır; pencere başlığında ve düğme ipucunda görünür. -->
-    <Version>1.13.2</Version>
+    <Version>1.13.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
