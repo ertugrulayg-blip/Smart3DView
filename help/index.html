@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Smart3DView — Quick start &amp; help</title>
-<meta name="description" content="Smart3DView for Revit: quick start, controls, colored MEP mode, clash detection, section box editing, pictures, trial and license.">
+<meta name="description" content="Smart3DView for Revit: quick start, controls, colored models, clash detection, section box editing, pictures, trial and license.">
 <style>
   :root{--bg:#f6f8fb;--card:#fff;--text:#0f172a;--sub:#475569;--line:#e2e8f0;--brand:#1d4e89;--acc:#f59e0b;--blue:#2563eb}
   *{box-sizing:border-box}
@@ -52,7 +52,7 @@
 <main data-l="en">
   <div class="toc">
     <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
-    <a href="#en-tones">Tones &amp; colored MEP mode</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-panel">Models, tags &amp; view cube</a>
+    <a href="#en-tones">Tones, Colored &amp; Detailed modes</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-panel">Models, tags &amp; view cube</a>
     <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
     <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
   </div>
@@ -85,17 +85,10 @@
     <tr><td>Fit</td><td>Double-click or <kbd>F</kbd> (selected element, or everything). <kbd>Home</kbd> returns to the default 3D angle.</td></tr>
   </table>
 
-  <h2 id="en-tones">Tones &amp; colored MEP mode</h2>
-  <p>The round buttons at the bottom right switch the look (keys <kbd>1</kbd>–<kbd>8</kbd>): <b>White, Light gray, Gray, Dark, Black, Paper</b> (white surfaces with black lines), <b>Colored</b> and <b>Detailed</b> (the default). Faces cut by the section box are drawn as solid poché.</p>
-  <p><b>Detailed</b> mode gives every element type its own color so equipment is easy to tell apart: walls gray, floors and ceilings light, doors near white, windows and mullions dark metal, structure concrete, cable trays and conduits metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow, sanitary fixtures white. Pipes and ducts use their system colors (below, plus heating orange, domestic water cyan, drainage brown).</p>
-  <p><b>Colored</b> mode keeps the building gray and colors the services:</p>
-  <ul>
-    <li><span class="sw" style="background:#296be0"></span>Chilled / cooling water pipes and their insulation — blue</li>
-    <li><span class="sw" style="background:#e02121"></span>Fire protection pipes and sprinklers — red</li>
-    <li><span class="sw" style="background:#db33c7"></span>Supply air ducts — magenta</li>
-    <li><span class="sw" style="background:#2ead4c"></span>Return and exhaust air ducts — green</li>
-  </ul>
-  <p>The system is recognised from the Revit system classification (Supply Air, Return Hydronic, Fire Protection…) and from the system name (CHW, chilled, cooling, fire, sprinkler, return, exhaust…). Other systems stay gray.</p>
+  <h2 id="en-tones">Tones, Colored &amp; Detailed modes</h2>
+  <p>The round buttons at the bottom right switch the look (keys <kbd>1</kbd>–<kbd>8</kbd>): <b>White, Light gray, Gray, Dark, Black, Paper</b> (like a pencil drawing: bold black lines, white surfaces and cuts), <b>Colored</b> and <b>Detailed</b> (the default). Faces cut by the section box are drawn as solid poché.</p>
+  <p><b>Detailed</b> mode gives every element type its own color so equipment is easy to tell apart: walls gray, floors and ceilings light, doors near white, windows and mullions dark metal, structure concrete, cable trays and conduits metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow, sanitary fixtures white. Pipes are teal, ducts galvanized, sprinklers red.</p>
+  <p><b>Colored</b> mode gives the host model and every linked model its own pastel color, so you see at a glance which file an element comes from. The colors are shown next to the names in the model list at the top left.</p>
 
   <h2 id="en-box">Editing the section box</h2>
   <ol class="steps">
@@ -184,7 +177,7 @@
 <main data-l="tr">
   <div class="toc">
     <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
-    <a href="#tr-tones">Tonlar ve renkli tesisat modu</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-panel">Modeller, etiket ve küp</a>
+    <a href="#tr-tones">Tonlar, Renkli ve Detaylı mod</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-panel">Modeller, etiket ve küp</a>
     <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
     <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
   </div>
@@ -217,17 +210,10 @@
     <tr><td>Sığdırma</td><td>Çift tık ya da <kbd>F</kbd> (seçili eleman ya da tümü). <kbd>Home</kbd> varsayılan 3B açıya döner.</td></tr>
   </table>
 
-  <h2 id="tr-tones">Tonlar ve renkli tesisat modu</h2>
-  <p>Sağ alttaki yuvarlak düğmeler görünümü değiştirir (<kbd>1</kbd>–<kbd>8</kbd> tuşları): <b>Beyaz, Açık gri, Gri, Koyu, Siyah, Kağıt</b> (beyaz yüzey, siyah çizgi), <b>Renkli</b> ve <b>Detaylı</b> (varsayılan). Kesit kutusunun kestiği yüzler dolu poşe olarak çizilir.</p>
-  <p><b>Detaylı</b> modda her eleman türü kendi rengindedir, cihazlar kolayca ayırt edilir: duvarlar gri, döşeme ve tavanlar açık, kapılar beyaza yakın, pencere ve kayıtlar koyu metal, taşıyıcı sistem beton rengi, kablo tavası ve conduitler metalik, kanallar galvaniz, mekanik cihazlar mor, elektrik panoları turuncu, aydınlatma sarı, vitrifiyeler beyaz. Borular ve kanallar sistem rengindedir (aşağıdaki renkler + ısıtma turuncu, kullanım suyu camgöbeği, pis su kahverengi).</p>
-  <p><b>Renkli</b> modda bina gri kalır, tesisatlar renklenir:</p>
-  <ul>
-    <li><span class="sw" style="background:#296be0"></span>Soğutma suyu boruları ve izolasyonları — mavi</li>
-    <li><span class="sw" style="background:#e02121"></span>Yangın boruları ve sprinkler'lar — kırmızı</li>
-    <li><span class="sw" style="background:#db33c7"></span>Üfleme (supply) kanalları — magenta</li>
-    <li><span class="sw" style="background:#2ead4c"></span>Emiş / dönüş / egzoz kanalları — yeşil</li>
-  </ul>
-  <p>Sistem, Revit'teki sistem sınıfından (Supply Air, Return Hydronic, Fire Protection…) ve sistem adından (CHW, chilled, soğutma, fire, sprinkler, return, exhaust…) anlaşılır. Diğer sistemler gri kalır.</p>
+  <h2 id="tr-tones">Tonlar, Renkli ve Detaylı mod</h2>
+  <p>Sağ alttaki yuvarlak düğmeler görünümü değiştirir (<kbd>1</kbd>–<kbd>8</kbd> tuşları): <b>Beyaz, Açık gri, Gri, Koyu, Siyah, Kağıt</b> (kalemle çizilmiş gibi: kalın siyah çizgi, beyaz yüzey ve kesit), <b>Renkli</b> ve <b>Detaylı</b> (varsayılan). Kesit kutusunun kestiği yüzler dolu poşe olarak çizilir.</p>
+  <p><b>Detaylı</b> modda her eleman türü kendi rengindedir, cihazlar kolayca ayırt edilir: duvarlar gri, döşeme ve tavanlar açık, kapılar beyaza yakın, pencere ve kayıtlar koyu metal, taşıyıcı sistem beton rengi, kablo tavası ve conduitler metalik, kanallar galvaniz, mekanik cihazlar mor, elektrik panoları turuncu, aydınlatma sarı, vitrifiyeler beyaz. Borular camgöbeği-yeşil, kanallar galvaniz, sprinkler'lar kırmızıdır.</p>
+  <p><b>Renkli</b> modda ana model ve her bağlı model kendi pastel rengindedir; bir elemanın hangi dosyadan geldiği bir bakışta görülür. Renkler sol üstteki model listesinde adların yanında gösterilir.</p>
 
   <h2 id="tr-box">Kesit kutusunu düzenleme</h2>
   <ol class="steps">

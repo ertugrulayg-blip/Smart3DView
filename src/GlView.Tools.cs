@@ -75,6 +75,27 @@ sealed unsafe partial class GlView
         return null;
     }
 
+    /// <summary>Modelin "Renkli" tondaki renk sırası: adların (büyük/küçük harf duyarsız) ilk görünüş sırası, 16'da döner.</summary>
+    int ModelColorIndex(string name)
+    {
+        var seen = new List<string>();
+        foreach (var n in _scene?.DocNames ?? new List<string>())
+        {
+            if (seen.Exists(x => string.Equals(x, n, StringComparison.CurrentCultureIgnoreCase))) continue;
+            if (string.Equals(n, name, StringComparison.CurrentCultureIgnoreCase)) return seen.Count % ModelRgb.Length;
+            seen.Add(n);
+        }
+        return 0;
+    }
+
+    /// <summary>Renkli tonda listede modelin rengi gösterilir (lejant).</summary>
+    Color? ModelSwatch(string name)
+    {
+        if (!_pal.Colored || _pal.Detailed) return null;
+        int c = ModelRgb[ModelColorIndex(name)];
+        return Color.FromRgb((byte)(c >> 16), (byte)(c >> 8), (byte)c);
+    }
+
     void DrawModelList()
     {
         _modelRects.Clear();
@@ -88,8 +109,9 @@ sealed unsafe partial class GlView
         {
             bool hidden = _hiddenModels.Contains(name);
             string t = (hidden ? "☐  " : "☑  ") + (link ? "🔗 " : "") + name + $"  ({count:N0})";
-            var (_, w, h) = LabelTexture(t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag);
-            DrawTextAt(new Point(x, y), t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag, center: false);
+            var sw = ModelSwatch(name);
+            var (_, w, h) = LabelTexture(t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag, sw);
+            DrawTextAt(new Point(x, y), t, _modelHover == name ? LabelStyle.Measure : LabelStyle.Tag, center: false, sw);
             _modelRects.Add((new Rect(x, y, w, h), name));
             y += h + 3 * Dpi;
         }
@@ -101,8 +123,13 @@ sealed unsafe partial class GlView
     {
         if (_scene == null) return;
         var s = _scene;
+        var doc = new int[s.DocNames.Count];
+        for (int d = 0; d < doc.Length; d++) doc[d] = ModelColorIndex(s.DocNames[d]) << 3;
         for (int i = 0; i < s.ElemColor.Count && 2 * (i + 1) < _state.Length; i++)
-            _state[2 * (i + 1)] = (byte)(s.ElemColor[i] | (IsHidden((uint)(i + 1)) ? 0x80 : 0));
+        {
+            int dc = i < s.ElemDoc.Count && s.ElemDoc[i] < doc.Length ? doc[s.ElemDoc[i]] : 0;
+            _state[2 * (i + 1)] = (byte)((s.ElemColor[i] & 7) | dc | (IsHidden((uint)(i + 1)) ? 0x80 : 0));
+        }
     }
 
     /// <summary>Çakışmanın iki tarafı iki renk: her çakışan çiftte grubu küçük olan (boru &lt; kanal &lt; tava &lt;

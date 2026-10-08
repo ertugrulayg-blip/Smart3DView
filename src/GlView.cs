@@ -40,6 +40,14 @@ sealed unsafe partial class GlView : HwndHost
         0x8E7CC3, 0xE3A33A, 0xF0D96A, 0xD98C5F,     // mekanik cihaz, elektrik pano/cihaz, aydınlatma, zayıf akım/yangın algılama
         0xF5F7F9, 0xA6B98A);                        // vitrifiye, arazi
 
+    // "Renkli" ton: ana model ve her bağlı model ayrı pastel renk (kullanıcı isteği 2026-10-08). Sıra: DocNames'teki ilk görünüş.
+    internal static readonly int[] ModelRgb =
+    {
+        0x9EC3EE, 0xF3B0AE, 0xAEDBA6, 0xF5D58A, 0xC8B4E8, 0xF4BE94, 0x9FD9D3, 0xEAB0D6,
+        0xD2E297, 0xB2C1D6, 0xEFC6A4, 0xBCD7F3, 0xE1CDA3, 0xC4E6C4, 0xD9B6B6, 0xBDBDEA,
+    };
+    static readonly float[] ModelColors = Rgb(ModelRgb);
+
     static float[] Rgb(params int[] c)
     {
         var a = new float[c.Length * 3];
@@ -93,7 +101,7 @@ sealed unsafe partial class GlView : HwndHost
 
     // shader programları ve uniform konumları
     uint _pSurf, _pEdge, _pBg, _pPick, _pOver;
-    int sPass, sMvp, sTone, sCam, sKey, sFill, sSky, sLight, sSel, sSelColor, sGlassA, sBoxMin, sBoxMax, sState, sColored, sClash, sClass, sClashColor, sClashColor2, sFade, sDetail;
+    int sPass, sMvp, sTone, sCam, sKey, sFill, sSky, sLight, sSel, sSelColor, sGlassA, sBoxMin, sBoxMax, sState, sColored, sClash, sClass, sClashColor, sClashColor2, sFade, sDetail, sModel;
     int eMvp, eColor, eSel, eSelColor, eBoxMin, eBoxMax, eState, eClash, eFade, bTop, bBot, pkMvp, pkBoxMin, pkBoxMax, pkState, oMvp, oPoint, oSize;
 
     // çerçeve tamponları: MSAA (kenar yumuşatma) + seçim (R32UI) + düşük çözünürlük
@@ -324,19 +332,19 @@ in vec3 vPos; in vec3 vNrm; flat in int vTone; flat in uint vId;
 uniform vec3 uTone[6]; uniform vec3 uCam; uniform vec3 uKey; uniform vec3 uFill; uniform vec3 uSky;
 uniform vec4 uLight; uniform uint uSel; uniform vec3 uSelColor; uniform float uGlassA;
 uniform vec3 uBoxMin; uniform vec3 uBoxMax; uniform mat4 uMvp;
-uniform usampler2D uState; uniform int uColored; uniform int uClash; uniform vec3 uClass[5]; uniform vec3 uDetail[25];
+uniform usampler2D uState; uniform int uColored; uniform int uClash; uniform vec3 uClass[5]; uniform vec3 uDetail[25]; uniform vec3 uModel[16];
 uniform vec3 uClashColor; uniform vec3 uClashColor2; uniform vec3 uFade; uniform int uPass;
 out vec4 o;
 void main(){
   if (any(lessThan(vPos, uBoxMin)) || any(greaterThan(vPos, uBoxMax))) discard;
   uvec2 st = texelFetch(uState, ivec2(int(vId % 4096u), int(vId / 4096u)), 0).rg;
   if ((st.r & 128u) != 0u) discard;   // filtreyle gizlenen kategori
-  uint cls = st.r & 127u;
+  uint cls = st.r & 7u, mdl = (st.r >> 3) & 15u;   // r: alt 3 bit sistem rengi, 4 bit model rengi, üst bit gizli
   uint det = min(st.g >> 2, 24u), ck = st.g & 3u;   // g: alt 2 bit çakışma tarafı, üst 6 bit detay rengi
   bool clash = uClash != 0 && ck != 0u;
   vec3 clashC = ck == 2u ? uClashColor2 : uClashColor;   // çakışmanın iki tarafı: kırmızı / mavi
   vec3 base = uTone[vTone];
-  if (uColored == 1 && cls != 0u && vTone != 4) base = uClass[cls];
+  if (uColored == 1 && vTone != 4) base = uModel[mdl];
   if (uColored == 2 && vTone != 4) base = uDetail[det];
   if (clash) base = clashC;
   vec3 c;
@@ -349,7 +357,7 @@ void main(){
   if (inside != (uPass == 1)) discard;
   if (inside) {
     vec3 cut = uTone[5];
-    if (uColored == 1 && cls != 0u) cut = uClass[cls] * 0.6;
+    if (uColored == 1) cut = uModel[mdl] * 0.6;
     if (uColored == 2) cut = uDetail[det] * 0.6;
     if (clash) cut = clashC * 0.75;
     c = cut;
@@ -468,7 +476,7 @@ void main(){
         sLight = GL.Uniform(_pSurf, "uLight"); sSel = GL.Uniform(_pSurf, "uSel"); sSelColor = GL.Uniform(_pSurf, "uSelColor");
         sGlassA = GL.Uniform(_pSurf, "uGlassA"); sBoxMin = GL.Uniform(_pSurf, "uBoxMin"); sBoxMax = GL.Uniform(_pSurf, "uBoxMax");
         sState = GL.Uniform(_pSurf, "uState"); sColored = GL.Uniform(_pSurf, "uColored"); sClash = GL.Uniform(_pSurf, "uClash");
-        sClass = GL.Uniform(_pSurf, "uClass"); sDetail = GL.Uniform(_pSurf, "uDetail"); sClashColor = GL.Uniform(_pSurf, "uClashColor"); sClashColor2 = GL.Uniform(_pSurf, "uClashColor2"); sFade = GL.Uniform(_pSurf, "uFade"); sPass = GL.Uniform(_pSurf, "uPass");
+        sClass = GL.Uniform(_pSurf, "uClass"); sDetail = GL.Uniform(_pSurf, "uDetail"); sModel = GL.Uniform(_pSurf, "uModel"); sClashColor = GL.Uniform(_pSurf, "uClashColor"); sClashColor2 = GL.Uniform(_pSurf, "uClashColor2"); sFade = GL.Uniform(_pSurf, "uFade"); sPass = GL.Uniform(_pSurf, "uPass");
         _pEdge = GL.Program(EdgeVs, EdgeFs);
         eMvp = GL.Uniform(_pEdge, "uMvp"); eColor = GL.Uniform(_pEdge, "uColor"); eSel = GL.Uniform(_pEdge, "uSel");
         eSelColor = GL.Uniform(_pEdge, "uSelColor"); eBoxMin = GL.Uniform(_pEdge, "uBoxMin"); eBoxMax = GL.Uniform(_pEdge, "uBoxMax");
@@ -768,6 +776,7 @@ void main(){
         fixed (float* t = tones) GL.Uniform3fv(sTone, 6, t);
         fixed (float* t = ClassColors) GL.Uniform3fv(sClass, 5, t);
         fixed (float* t = DetailColors) GL.Uniform3fv(sDetail, Detail.Count, t);
+        fixed (float* t = ModelColors) GL.Uniform3fv(sModel, 16, t);
         GL.Uniform3f(sCam, (float)_pos.X, (float)_pos.Y, (float)_pos.Z);
         UV(sKey, key); UV(sFill, fill); UV(sSky, sky);
         GL.Uniform4f(sLight, (float)_pal.Ambient, (float)_pal.Key, (float)_pal.Fill, (float)_pal.Sky);

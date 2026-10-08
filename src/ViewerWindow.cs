@@ -32,7 +32,9 @@ sealed record Palette(
         new("Gri", "Gray",            C(0x969696), C(0x5E5E5E), C(0xC2C2C2), C(0x1A1A1A), C(0x222222), 0.40, 0.65, 0.20, 0.15, 1.2, false, true),
         new("Koyu", "Dark",           C(0x404040), C(0x1C1C1C), C(0x9E9E9E), C(0x101010), C(0x262626), 0.38, 0.65, 0.22, 0.12, 1.2, false, true),
         new("Siyah", "Black",         C(0x161616), C(0x000000), C(0x343434), C(0xE6E6E6), C(0xEDEDED), 0.35, 0.60, 0.25, 0.10, 1.0, true, true),
-        new("Kağıt", "Paper",         C(0xFFFFFF), C(0xFFFFFF), C(0xFFFFFF), C(0x111111), C(0x161616), 0.90, 0.10, 0.04, 0.03, 1.4, false, false),
+        // Kağıt: gerçek kâğıt gibi — üst/yan yüzler ve kesitler beyaza çok yakın (yalnız eğri yüzler hafif tonlanır ki borular kaybolmasın), kenarlar kalın siyah kalem çizgisi (kullanıcı isteği 2026-10-08).
+        // Eskiden kesit poşesi siyahtı, kenarlar kalın → "kapkara" görünüyordu (kullanıcı raporu 2026-10-08).
+        new("Kağıt", "Paper",         C(0xFFFFFF), C(0xFFFFFF), C(0xFFFFFF), C(0x101010), C(0xFFFFFF), 1.10, 0.14, 0.00, 0.00, 1.8, false, false),
         new("Renkli", "Colored",      C(0xF4F4F2), C(0xD2D2D0), C(0xE8E8E8), C(0x2A2A2A), C(0x3A3A3A), 0.48, 0.58, 0.20, 0.12, 1.2, false, true, Colored: true),
         new("Detaylı", "Detailed",    C(0xF2F4F6), C(0xCDD3D9), C(0xE0E0E0), C(0x2A2A2A), C(0x3A3A3A), 0.46, 0.60, 0.20, 0.12, 1.1, false, true, Colored: true, Detailed: true),
     };

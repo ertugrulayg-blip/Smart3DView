@@ -512,10 +512,10 @@ void main(){ o = texture(uTex, vUv); }";
     }
 
     /// <summary>Ekran pikselinde yazı: center → p ortası, değilse p sol-üst köşe (pencere dışına taşmaz).</summary>
-    void DrawTextAt(Point p, string text, LabelStyle style, bool center)
+    void DrawTextAt(Point p, string text, LabelStyle style, bool center, Color? swatch = null)
     {
         if (_pText == 0) return;
-        var (tex, w, h) = LabelTexture(text, style);
+        var (tex, w, h) = LabelTexture(text, style, swatch);
         if (tex == 0) return;
         double x = center ? p.X - w / 2.0 : p.X, y = center ? p.Y - h / 2.0 : p.Y;
         if (!center) { x = Math.Min(x, _w - w - 4); y = Math.Min(y, _h - h - 4); }
@@ -538,9 +538,10 @@ void main(){ o = texture(uTex, vUv); }";
     }
 
     /// <summary>Etiketi WPF ile bir bitmape çizip dokuya yükler; aynı metin+stil önbellekten.</summary>
-    (uint tex, int w, int h) LabelTexture(string text, LabelStyle style)
+    /// <param name="swatch">Verilirse yazının soluna o renkte yuvarlak (Renkli tonda model listesi lejantı).</param>
+    (uint tex, int w, int h) LabelTexture(string text, LabelStyle style, Color? swatch = null)
     {
-        string key = (int)style + "|" + text;
+        string key = (int)style + "|" + swatch + "|" + text;
         if (_labelTex.TryGetValue(key, out var hit)) return hit;
         if (_labelTex.Count > 160) FreeLabels();
         double dpi = 1;
@@ -555,12 +556,15 @@ void main(){ o = texture(uTex, vUv); }";
             new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
             size * dpi, new SolidColorBrush(fg), dpi);
         int padX = (int)(pad * dpi), padY = (int)((style == LabelStyle.Cube ? 0 : 3) * dpi);
-        int w = (int)Math.Ceiling(ft.Width) + 2 * padX, h = (int)Math.Ceiling(ft.Height) + 2 * padY;
+        double sw = swatch == null ? 0 : ft.Height * 0.62, gap = swatch == null ? 0 : 6 * dpi;
+        int w = (int)Math.Ceiling(ft.Width + sw + gap) + 2 * padX, h = (int)Math.Ceiling(ft.Height) + 2 * padY;
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
         {
             if (bg.A > 0) dc.DrawRoundedRectangle(new SolidColorBrush(bg), null, new Rect(0, 0, w, h), 4 * dpi, 4 * dpi);
-            dc.DrawText(ft, new Point(padX, padY));
+            if (swatch is { } sc)
+                dc.DrawEllipse(new SolidColorBrush(sc), new Pen(Brushes.White, 1.2 * dpi), new Point(padX + sw / 2, h / 2.0), sw / 2, sw / 2);
+            dc.DrawText(ft, new Point(padX + sw + gap, padY));
         }
         var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(dv);
