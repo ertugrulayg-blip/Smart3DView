@@ -68,6 +68,8 @@ sealed unsafe partial class GlView : HwndHost
     public event Action? BoxEdited;
     /// <summary>Kutu, Revit'ten okunan bölgenin dışına çıktı → bu sınırlarla yeniden okunmalı.</summary>
     public event Action<double[], double[]>? GrowRequested;
+    /// <summary>Esc önce buna sorulur (Revit okuması sürüyorsa iptal eder ve true döner); false → seçimi kaldır.</summary>
+    public Func<bool>? EscapeOverride;
 
     // QUICKBOX_DIAG=<dosya> ortam değişkeniyle GPU adı ve kare süreleri yazılır (performans teşhisi için).
     static readonly string? DiagPath = Environment.GetEnvironmentVariable("QUICKBOX_DIAG");
@@ -199,6 +201,15 @@ sealed unsafe partial class GlView : HwndHost
         ApplyClashBits();
         UploadState();
         Invalidate();
+    }
+
+    /// <summary>Kutuyu okunmuş alana geri çeker (büyütme okuması iptal edilince).</summary>
+    public void ClampBoxToLoaded()
+    {
+        for (int k = 0; k < 3; k++) { _bMin[k] = Math.Max(_bMin[k], _cMin[k]); _bMax[k] = Math.Min(_bMax[k], _cMax[k]); }
+        UpdateCenter();
+        Invalidate();
+        BoxEdited?.Invoke();
     }
 
     public void ResetBox()
@@ -1472,7 +1483,7 @@ void main(){
                 else if (vk >= 0x61 && vk < 0x61 + n) PaletteKey?.Invoke(vk - 0x61);
                 else if (vk == 'F') FitSelectionOrAll();
                 else if (vk == Win32.VK_HOME) FitAll(IsoLook);
-                else if (vk == Win32.VK_ESCAPE) Select(0);
+                else if (vk == Win32.VK_ESCAPE) { if (EscapeOverride?.Invoke() != true) Select(0); }
                 else if (vk is 'C' or 'B' or 'M' or 'P' or 'R') ToolKey?.Invoke((char)vk);
                 else if (vk == 0x74) ToolKey?.Invoke('R'); // F5: Revit'ten yenile
                 else if (vk == 0x70) ToolKey?.Invoke('?'); // F1: yardım

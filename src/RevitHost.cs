@@ -46,12 +46,17 @@ sealed class RevitHost : IViewerHost
 {
     public static readonly RevitHost Instance = new();
 
-    public void Recollect(object context, double[] min, double[] max, Action<SceneData?, string?> done, SceneData? append = null)
+    const double SliceSeconds = 0.1;   // bir dilimde en fazla bu kadar okunur, sonra Revit'e (ve pencereye) bırakılır
+    const int ConfirmAbove = 3000;     // bundan çok yeni eleman varsa okumadan önce sorulur
+
+    public void Recollect(object context, double[] min, double[] max, Action<SceneData?, string?> done, SceneData? append = null, ReadControl? ctl = null)
     {
         var ctx = (RevitContext)context;
+        string closed = L.T("Model kapatılmış.", "The model has been closed.");
+        string cancelled = L.T("Okuma iptal edildi — kutu önceki alana döndü.", "Reading cancelled — the box is back to the loaded area.");
         RevitBridge.Post(_ =>
         {
-            if (!ctx.Doc.IsValidObject) { done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
+            if (!ctx.Doc.IsValidObject) { done(null, closed); return; }
             var box = new ClipBox
             {
                 Frame = ctx.Box.Frame,
@@ -60,9 +65,32 @@ sealed class RevitHost : IViewerHost
                 Source = ctx.Box.Source,
             };
             var view = ctx.Doc.GetElement(ctx.ViewId) as View;
-            var scene = SceneCollector.Collect(ctx.Doc, view, box, append);
-            scene.Context = new RevitContext(ctx.Doc, ctx.ViewId, box);
-            done(scene, null);
+            // Kurulum yalnız eleman listesini çıkarır (hızlı) → sayıya göre sorulur, sonra dilim dilim okunur.
+            var job = new SceneJob(ctx.Doc, view, box, append);
+            if (ctl?.Confirm != null && job.Total >= ConfirmAbove)
+            {
+                // Tahmin ~2,6 ms/eleman (gerçek model, 2026-10-08: 8.465 eleman 22 sn).
+                if (!ctl.Confirm(job.Total, job.Total * 0.0026)) { done(null, cancelled); return; }
+            }
+
+            void Next(UIApplication _)
+            {
+                if (!ctx.Doc.IsValidObject) { done(null, closed); return; }
+                if (ctl?.Cancel == true) { done(null, cancelled); return; }
+                bool finished;
+                try { finished = job.Step(ctl == null ? double.PositiveInfinity : SliceSeconds); }
+                catch (Exception ex) { done(null, ex.Message); return; }
+                if (!finished)
+                {
+                    ctl?.Progress?.Invoke(job.Done, job.Total);
+                    RevitBridge.Post(Next);   // sıradaki dilim Revit bir sonraki boşta kaldığında
+                    return;
+                }
+                var scene = job.Result;
+                scene.Context = new RevitContext(ctx.Doc, ctx.ViewId, box);
+                done(scene, null);
+            }
+            Next(null!);
         });
     }
 

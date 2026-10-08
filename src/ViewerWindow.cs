@@ -181,6 +181,7 @@ sealed partial class ViewerWindow : Window
         _view.Failed += msg => { _error = msg; UpdateStatus(); };
         _view.BoxEdited += () => { if (_clashOn) _ = RunClash(); };
         _view.GrowRequested += Grow;
+        _view.EscapeOverride = CancelRead;
         _info.ToolTip = "GPU";
         _info.ToolTipOpening += (_, _) => _info.ToolTip = "GPU: " + (_view.Renderer.Length > 0 ? _view.Renderer : "?") + Environment.NewLine + _timing;
         _flashTimer.Tick += (_, _) => { _flashTimer.Stop(); _flash = null; UpdateStatus(); };
@@ -199,7 +200,7 @@ sealed partial class ViewerWindow : Window
         });
         License.Changed += licChanged;
         ModelWatch.Changed += modelChanged;
-        Closed += (_, _) => { _closed = true; foreach (var f in _flyouts) f.Popup.IsOpen = false; License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
+        Closed += (_, _) => { _closed = true; if (_read != null) _read.Cancel = true; foreach (var f in _flyouts) f.Popup.IsOpen = false; License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
         Loaded += async (_, _) => { await License.Revalidate(); RefreshTools(); };
         Closing += (_, _) => SaveSettings();
 
@@ -273,21 +274,64 @@ sealed partial class ViewerWindow : Window
         if (_host == null || _scene?.Context == null) { Flash(L.T("Revit bağlantısı yok; yalnız okunan alan gösterilebilir.", "No Revit link; only the loaded area can be shown.")); return; }
         if (_busy) { _pendingGrow = true; return; }   // okuma sürerken yeniden büyütüldü → bitince son kutu okunur
         _busy = true;
-        Flash(L.T("Genişleyen bölge Revit'ten okunuyor…", "Reading the enlarged area from Revit…"));
+        Flash(L.T("Genişleyen bölge Revit'ten okunuyor…  ·  Esc: iptal", "Reading the enlarged area from Revit…  ·  Esc: cancel"));
         string? selKey = _view.SelectedKey;
-        // Yüklü elemanlar korunur; Revit'ten yalnız yeni giren elemanların geometrisi istenir.
+        var ctl = NewRead(L.T("Genişleyen bölge okunuyor", "Reading the enlarged area"), confirm: true);
+        // Yüklü elemanlar korunur; Revit'ten yalnız yeni giren elemanların geometrisi istenir (dilim dilim).
         _host.Recollect(_scene.Context, lo, hi, (scene, err) => Dispatcher.BeginInvoke(() =>
         {
             _busy = false;
-            if (scene == null) { Flash(err ?? "?"); return; }
+            _read = null;
+            if (scene == null)
+            {
+                if (ctl.Cancel) { _pendingGrow = false; _view.ClampBoxToLoaded(); }   // iptal: kutu okunmuş alana döner
+                Flash(err ?? "?");
+                return;
+            }
             Load(scene, _docTitle, keepView: true);
             _view.SelectByKey(selKey);
             Flash(L.T("Kutu genişletildi — ", "Box enlarged — ") + Breakdown(scene));
             if (_pendingGrow) { _pendingGrow = false; GrowIfNeeded(_view.BoxMin, _view.BoxMax); }
-        }), append: _scene);
+        }), append: _scene, ctl: ctl);
     }
 
     bool _pendingGrow;
+    ReadControl? _read;   // sürmekte olan Revit okuması (Esc iptal eder)
+
+    /// <summary>Dilimli okuma bağı (kullanıcı isteği 2026-10-08): büyük alanda önce sorar, ilerlemeyi durum
+    /// çubuğunda gösterir, Esc ile iptal edilir.</summary>
+    ReadControl NewRead(string what, bool confirm)
+    {
+        var ctl = new ReadControl();
+        if (confirm)
+            ctl.Confirm = (n, sec) =>
+            {
+                string t = sec < 60 ? L.T($"{sec:0} sn", $"{sec:0} s") : L.T($"{sec / 60:0.#} dk", $"{sec / 60:0.#} min");
+                bool ok = MessageBox.Show(this,
+                    L.T($"Bu alanda okunacak {n:N0} yeni eleman var; yaklaşık {t} sürebilir.\n\nOkuma parça parça yapılır: bu sürede Revit ve bu pencere kullanılabilir, Esc ile iptal edilebilir.\n\nDevam edilsin mi?",
+                        $"There are {n:N0} new elements to read in this area; it may take about {t}.\n\nThe area is read in small parts: Revit and this window stay usable, and Esc cancels.\n\nContinue?"),
+                    Product.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+                if (!ok) ctl.Cancel = true;
+                return ok;
+            };
+        ctl.Progress = (done, total) =>
+        {
+            if (ctl.Cancel) return;
+            int pct = total == 0 ? 100 : (int)(100.0 * done / total);
+            Flash(L.T($"{what}… %{pct}  ({done:N0} / {total:N0})  ·  Esc: iptal", $"{what}… {pct}%  ({done:N0} / {total:N0})  ·  Esc: cancel"));
+        };
+        _read = ctl;
+        return ctl;
+    }
+
+    /// <summary>Esc: okuma sürüyorsa iptal eder (seçim kalır); yoksa false → Esc seçimi kaldırır.</summary>
+    bool CancelRead()
+    {
+        if (_read == null) return false;
+        _read.Cancel = true;
+        Flash(L.T("İptal ediliyor…", "Cancelling…"));
+        return true;
+    }
 
     void GrowIfNeeded(double[] lo, double[] hi)
     {
@@ -306,17 +350,19 @@ sealed partial class ViewerWindow : Window
         double[] lo = _view.BoxMin, hi = _view.BoxMax;
         string? selKey = _view.SelectedKey;
         _busy = true;
-        Flash(L.T("Revit'ten yeniden okunuyor…", "Reloading from Revit…"));
+        Flash(L.T("Revit'ten yeniden okunuyor…  ·  Esc: iptal", "Reloading from Revit…  ·  Esc: cancel"));
+        var ctl = NewRead(L.T("Yeniden okunuyor", "Reloading"), confirm: false);
         _host.Recollect(_scene.Context, lo, hi, (scene, err) => Dispatcher.BeginInvoke(() =>
         {
             _busy = false;
+            _read = null;
             if (scene == null) { Flash(err ?? "?"); return; }
             _stale = false;
             Load(scene, _docTitle, keepView: true);
             _view.SelectByKey(selKey);
             RefreshTools();
             Flash(L.T("Revit'teki değişiklikler yansıtıldı — ", "Changes from Revit applied — ") + Breakdown(scene));
-        }));
+        }), ctl: ctl);
     }
 
     void CycleTol()

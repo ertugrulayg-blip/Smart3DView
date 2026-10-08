@@ -22,12 +22,24 @@ static class AddinVersion
     public static string Text => $"v{Version} · {BuildTime}";
 }
 
+/// <summary>Revit'ten okuma sürerken pencere ile Revit tarafı arasındaki bağ (ikisi de aynı iş parçacığında).</summary>
+sealed class ReadControl
+{
+    /// <summary>Esc → true; bir sonraki dilimde okuma bırakılır.</summary>
+    public bool Cancel;
+    /// <summary>Okunacak yeni eleman sayısı ve tahmini süre (sn) → devam edilsin mi? null: sorulmaz.</summary>
+    public System.Func<int, double, bool>? Confirm;
+    /// <summary>Okunan, toplam.</summary>
+    public System.Action<int, int>? Progress;
+}
+
 /// <summary>Pencerenin Revit'ten istediği işler (Revit türleri içermez; test düzeneği null verir).</summary>
 interface IViewerHost
 {
     /// <summary>Aynı çerçevede yeni kutu sınırlarıyla geometriyi okur. append verilirse onun elemanları korunur ve
     /// yalnız henüz okunmamış elemanlar eklenir (kutu büyütme hızlı olsun); null ise her şey baştan okunur (Yenile).</summary>
-    void Recollect(object context, double[] min, double[] max, System.Action<SceneData?, string?> done, SceneData? append = null);
+    /// <param name="ctl">Dilimli okuma: büyük alanda onay, ilerleme ve iptal (Esc). null → tek seferde.</param>
+    void Recollect(object context, double[] min, double[] max, System.Action<SceneData?, string?> done, SceneData? append = null, ReadControl? ctl = null);
 
     /// <summary>PNG'yi Revit'e görüntü görünümü (Renderings) olarak ekler.</summary>
     void SaveImage(object context, string pngPath, System.Action<string> done);

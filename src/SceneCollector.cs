@@ -17,106 +17,9 @@ static class SceneCollector
     /// istenir (eskiden her büyütmede tüm alan baştan okunuyordu — kullanıcı raporu 2026-10-07 "biraz fazla uzun sürüyor").</param>
     public static SceneData Collect(Document doc, View? activeView, ClipBox box, SceneData? prev = null)
     {
-        var scene = prev?.CloneForAppend() ?? new SceneData();
-        scene.Source = box.Source;
-        var ctx = new Ctx(scene, box.Min, box.Max);
-        var frameInv = box.Frame.Inverse;
-        // 3B görünümde kullanıcının gizlediği elemanlar/kategoriler görünmesin; planda ise tavan vb. kesit üstü
-        // elemanlar "görünür" sayılmadığı için tüm belge taranır.
-        ElementId? viewId = activeView is View3D v3 && !v3.IsTemplate ? activeView.Id : null;
-
-        // Okunacak belgeler: ana model + bağlı model örnekleri (aynı model iki kez bağlıysa iki geçiş).
-        var passes = new List<(long key, Document d, Transform toLocal, RevitLinkInstance? li)> { (-1, doc, frameInv, null) };
-        var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
-        foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
-            if (li.GetLinkDocument() is { } ld) passes.Add((li.Id.Value, ld, frameInv.Multiply(li.GetTotalTransform()), li));
-
-        // Her geçişte: sahnedeki belge sırası, zaten yüklü elemanlar (eklemede atlanır) ve henüz okunmamış tavalar.
-        var idx = new byte[passes.Count];
-        var existing = new Dictionary<long, uint>?[passes.Count];
-        var trays = new List<Element>[passes.Count];
-        for (int i = 0; i < passes.Count; i++)
-        {
-            var (key, d, toLocal, _) = passes[i];
-            int di = -1;
-            for (int k = 0; k < scene.Docs.Count && k < scene.DocKeys.Count; k++)
-                if (scene.DocKeys[k] == key && ReferenceEquals(scene.Docs[k], d)) { di = k; break; }
-            if (di < 0)
-            {
-                if (scene.Docs.Count > 250) { idx[i] = 255; trays[i] = new(); continue; }
-                di = scene.Docs.Count;
-                scene.Docs.Add(d);
-                scene.DocKeys.Add(key);
-                scene.DocNames.Add(d.Title);
-            }
-            idx[i] = (byte)di;
-            if (prev != null)
-            {
-                var map = new Dictionary<long, uint>();
-                for (int j = 0; j < scene.ElemDoc.Count; j++)
-                    if (scene.ElemDoc[j] == di) map[scene.ElemRevitId[j]] = (uint)(j + 1);
-                existing[i] = map;
-            }
-            trays[i] = i == 0 ? TraysInBox(ctx, d, toLocal, existing[i]) : new();   // Fine tava yalnız ana modelde
-        }
-
-        // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
-        // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
-        // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
-        // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) eski davranış.
-        // Bağlı modellerin tavaları eski yolla okunur: bağlantının tüm geometrisini Fine görünümden alıp tavalara
-        // eşleştirmek büyük modelde Revit'i dakikalarca kilitledi (1.12.0 denemesi, 2026-10-07) — kaldırıldı.
-        Transaction? tmp = null;
-        Options? trayOpt = null;
-        try
-        {
-            if (trays[0]?.Count > 0 && idx[0] != 255 && !doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument)
-            {
-                ViewFamilyType? vft = null;
-                foreach (ViewFamilyType t in new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)))
-                    if (t.ViewFamily == ViewFamily.ThreeDimensional) { vft = t; break; }
-                if (vft != null)
-                {
-                    tmp = new Transaction(doc, Product.Name + " temp view");
-                    if (tmp.Start() == TransactionStatus.Started)
-                    {
-                        var fv = View3D.CreateIsometric(doc, vft.Id);
-                        if (fv.ViewTemplateId != ElementId.InvalidElementId) fv.ViewTemplateId = ElementId.InvalidElementId;
-                        fv.DetailLevel = ViewDetailLevel.Fine;
-                        doc.Regenerate();
-                        trayOpt = new Options { View = fv, ComputeReferences = false, IncludeNonVisibleObjects = false };
-                    }
-                }
-            }
-        }
-        catch { trayOpt = null; }
-
-        try
-        {
-            for (int i = 0; i < passes.Count; i++)
-            {
-                if (idx[i] == 255) continue;
-                var (_, d, toLocal, li) = passes[i];
-                new DocPass(ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, idx[i],
-                    li == null && trays[i].Count > 0 ? trayOpt : null, existing[i]).Run();
-            }
-        }
-        finally
-        {
-            try { if (tmp != null && tmp.HasStarted() && !tmp.HasEnded()) tmp.RollBack(); } catch { }
-            tmp?.Dispose();
-        }
-
-        scene.FormatLength = LengthFormat.Make(doc);
-        scene.FrameAngle = Math.Atan2(box.Frame.BasisX.Y, box.Frame.BasisX.X);
-        scene.BoxMin = new[] { box.Min.X, box.Min.Y, box.Min.Z };
-        scene.BoxMax = new[] { box.Max.X, box.Max.Y, box.Max.Z };
-        scene.Seconds = ctx.Watch.Elapsed.TotalSeconds;
-        scene.GeoSeconds = ctx.GeometrySeconds; scene.TriSeconds = ctx.TriSeconds + ctx.EdgeSeconds; scene.InfoSeconds = ctx.InfoSeconds;
-        scene.Timing = L.T(
-            $"Revit geometri {ctx.GeometrySeconds:0.00} sn · üçgenleme {ctx.TriSeconds:0.00} sn · kenar {ctx.EdgeSeconds:0.00} sn · sistem bilgisi {ctx.InfoSeconds:0.00} sn · toplam {scene.Seconds:0.00} sn",
-            $"Revit geometry {ctx.GeometrySeconds:0.00} s · triangulation {ctx.TriSeconds:0.00} s · edges {ctx.EdgeSeconds:0.00} s · system info {ctx.InfoSeconds:0.00} s · total {scene.Seconds:0.00} s");
-        return scene;
+        var job = new SceneJob(doc, activeView, box, prev);
+        while (!job.Step(double.PositiveInfinity)) { }
+        return job.Result;
     }
 
     /// <summary>Kutunun (yerel) belge koordinatlarındaki eksen hizalı sınırı.</summary>
@@ -132,28 +35,171 @@ static class SceneCollector
         return new Outline(new XYZ(x0, y0, z0), new XYZ(x1, y1, z1));
     }
 
-    /// <summary>Kutuya giren ve henüz sahnede olmayan düz kablo tavaları.</summary>
-    static List<Element> TraysInBox(Ctx c, Document d, Transform toLocal, Dictionary<long, uint>? existing)
-    {
-        var res = new List<Element>();
-        try
-        {
-            foreach (var e in new FilteredElementCollector(d).OfCategory(BuiltInCategory.OST_CableTray).WhereElementIsNotElementType()
-                         .WherePasses(new BoundingBoxIntersectsFilter(DocOutline(c, toLocal.Inverse))))
-                if (existing == null || !existing.ContainsKey(e.Id.Value)) res.Add(e);
-        }
-        catch { }
-        return res;
-    }
-
     internal sealed class Ctx
     {
         public readonly SceneData Scene;
         public readonly XYZ Min, Max;
-        public readonly Stopwatch Watch = Stopwatch.StartNew();
+        public readonly Stopwatch Watch = new();   // yalnız çalışılan dilimler (aradaki Revit boşlukları sayılmaz)
         public double GeometrySeconds, TriSeconds, EdgeSeconds, InfoSeconds;
         public static double Since(long t0) => (Stopwatch.GetTimestamp() - t0) / (double)Stopwatch.Frequency;
         public Ctx(SceneData scene, XYZ min, XYZ max) { Scene = scene; Min = min; Max = max; }
+    }
+}
+
+/// <summary>Dilim dilim okuma (kullanıcı isteği 2026-10-08: büyük alana sürükleyince Revit "yanıt vermiyor"a
+/// düşüyordu). Kurulum yalnız eleman listesini çıkarır (hızlı; <see cref="Total"/> onay sorusu için). Her
+/// <see cref="Step"/> verilen süre dolana kadar eleman okur ve döner → arada Revit ve pencere mesajlarını işler,
+/// ilerleme gösterilir, Esc iptal eder. Ana modelin düz tavaları en sona bırakılır: geçici Fine görünüm bir işlem
+/// (transaction) ister ve işlem tek dilim içinde açılıp geri alınmalı.</summary>
+sealed class SceneJob
+{
+    readonly Document _doc;
+    readonly ClipBox _box;
+    readonly SceneCollector.Ctx _ctx;
+    readonly List<(DocPass pass, List<ElementId> ids)> _work = new();
+    readonly List<ElementId> _trays = new();
+    int _pass, _pos, _done;
+    bool _finished;
+
+    public int Total { get; }
+    public int Done => _done;
+    public SceneData Result => _ctx.Scene;
+    /// <summary>Şimdiye kadar eleman başına geçen süre (kalan süre tahmini için).</summary>
+    public double SecondsPerElement => _done == 0 ? 0 : _ctx.Watch.Elapsed.TotalSeconds / _done;
+
+    public SceneJob(Document doc, View? activeView, ClipBox box, SceneData? prev)
+    {
+        _doc = doc; _box = box;
+        var scene = prev?.CloneForAppend() ?? new SceneData();
+        scene.Source = box.Source;
+        _ctx = new SceneCollector.Ctx(scene, box.Min, box.Max);
+        _ctx.Watch.Start();
+        var frameInv = box.Frame.Inverse;
+        // 3B görünümde kullanıcının gizlediği elemanlar/kategoriler görünmesin; planda ise tavan vb. kesit üstü
+        // elemanlar "görünür" sayılmadığı için tüm belge taranır.
+        ElementId? viewId = activeView is View3D v3 && !v3.IsTemplate ? activeView.Id : null;
+
+        // Okunacak belgeler: ana model + bağlı model örnekleri (aynı model iki kez bağlıysa iki geçiş).
+        var passes = new List<(long key, Document d, Transform toLocal, RevitLinkInstance? li)> { (-1, doc, frameInv, null) };
+        var links = viewId != null ? new FilteredElementCollector(doc, viewId) : new FilteredElementCollector(doc);
+        foreach (RevitLinkInstance li in links.OfClass(typeof(RevitLinkInstance)))
+            if (li.GetLinkDocument() is { } ld) passes.Add((li.Id.Value, ld, frameInv.Multiply(li.GetTotalTransform()), li));
+
+        foreach (var (key, d, toLocal, li) in passes)
+        {
+            int di = -1;
+            for (int k = 0; k < scene.Docs.Count && k < scene.DocKeys.Count; k++)
+                if (scene.DocKeys[k] == key && ReferenceEquals(scene.Docs[k], d)) { di = k; break; }
+            if (di < 0)
+            {
+                if (scene.Docs.Count > 250) continue;
+                di = scene.Docs.Count;
+                scene.Docs.Add(d);
+                scene.DocKeys.Add(key);
+                scene.DocNames.Add(d.Title);
+            }
+            Dictionary<long, uint>? existing = null;
+            if (prev != null)
+            {
+                existing = new Dictionary<long, uint>();
+                for (int j = 0; j < scene.ElemDoc.Count; j++)
+                    if (scene.ElemDoc[j] == di) existing[scene.ElemRevitId[j]] = (uint)(j + 1);
+            }
+            var pass = new DocPass(_ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, (byte)di, null, existing);
+            var ids = pass.Prepare();
+            _work.Add((pass, ids));
+            Total += ids.Count;
+        }
+        _ctx.Watch.Stop();
+    }
+
+    /// <summary>En fazla <paramref name="seconds"/> çalışır (eleman sınırında durur); iş bittiyse true.</summary>
+    public bool Step(double seconds)
+    {
+        if (_finished) return true;
+        _ctx.Watch.Start();
+        long t0 = Stopwatch.GetTimestamp();
+        try
+        {
+            while (_pass < _work.Count)
+            {
+                var (pass, ids) = _work[_pass];
+                bool host = _pass == 0;
+                while (_pos < ids.Count)
+                {
+                    var id = ids[_pos++];
+                    _done++;
+                    if (!pass.Process(id, deferTrays: host)) _trays.Add(id);
+                    if (SceneCollector.Ctx.Since(t0) > seconds) return false;
+                }
+                if (!host) pass.Finish();
+                _pass++; _pos = 0;
+            }
+            if (_work.Count > 0) ReadHostTrays(_work[0].pass);
+            Complete();
+            _finished = true;
+            return true;
+        }
+        finally { _ctx.Watch.Stop(); }
+    }
+
+    // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
+    // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
+    // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
+    // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) normal okunur.
+    // Bağlı modellerin tavaları normal okunur: Fine için denenen üç yol da işe yaramadı ya da Revit'i kilitledi
+    // (1.12.0, 1.13.1, 1.13.3 — 2026-10-07/08).
+    void ReadHostTrays(DocPass host)
+    {
+        Transaction? tmp = null;
+        try
+        {
+            if (_trays.Count > 0 && !_doc.IsReadOnly && !_doc.IsModifiable && !_doc.IsFamilyDocument)
+            {
+                ViewFamilyType? vft = null;
+                foreach (ViewFamilyType t in new FilteredElementCollector(_doc).OfClass(typeof(ViewFamilyType)))
+                    if (t.ViewFamily == ViewFamily.ThreeDimensional) { vft = t; break; }
+                if (vft != null)
+                {
+                    tmp = new Transaction(_doc, Product.Name + " temp view");
+                    if (tmp.Start() == TransactionStatus.Started)
+                    {
+                        var fv = View3D.CreateIsometric(_doc, vft.Id);
+                        if (fv.ViewTemplateId != ElementId.InvalidElementId) fv.ViewTemplateId = ElementId.InvalidElementId;
+                        fv.DetailLevel = ViewDetailLevel.Fine;
+                        _doc.Regenerate();
+                        host.TrayOpt = new Options { View = fv, ComputeReferences = false, IncludeNonVisibleObjects = false };
+                    }
+                }
+            }
+        }
+        catch { host.TrayOpt = null; }
+        try
+        {
+            foreach (var id in _trays) host.Process(id, deferTrays: false);
+            host.Finish();
+        }
+        finally
+        {
+            host.TrayOpt = null;
+            try { if (tmp != null && tmp.HasStarted() && !tmp.HasEnded()) tmp.RollBack(); } catch { }
+            tmp?.Dispose();
+        }
+    }
+
+    void Complete()
+    {
+        var scene = _ctx.Scene;
+        var ctx = _ctx;
+        scene.FormatLength = LengthFormat.Make(_doc);
+        scene.FrameAngle = Math.Atan2(_box.Frame.BasisX.Y, _box.Frame.BasisX.X);
+        scene.BoxMin = new[] { _box.Min.X, _box.Min.Y, _box.Min.Z };
+        scene.BoxMax = new[] { _box.Max.X, _box.Max.Y, _box.Max.Z };
+        scene.Seconds = ctx.Watch.Elapsed.TotalSeconds;
+        scene.GeoSeconds = ctx.GeometrySeconds; scene.TriSeconds = ctx.TriSeconds + ctx.EdgeSeconds; scene.InfoSeconds = ctx.InfoSeconds;
+        scene.Timing = L.T(
+            $"Revit geometri {ctx.GeometrySeconds:0.00} sn · üçgenleme {ctx.TriSeconds:0.00} sn · kenar {ctx.EdgeSeconds:0.00} sn · sistem bilgisi {ctx.InfoSeconds:0.00} sn · toplam {scene.Seconds:0.00} sn",
+            $"Revit geometry {ctx.GeometrySeconds:0.00} s · triangulation {ctx.TriSeconds:0.00} s · edges {ctx.EdgeSeconds:0.00} s · system info {ctx.InfoSeconds:0.00} s · total {scene.Seconds:0.00} s");
     }
 }
 
@@ -226,7 +272,8 @@ sealed class DocPass
     readonly ElementId? _viewId;
     readonly string? _linkName;
     readonly byte _docIdx;
-    readonly Options? _trayOpt;   // kablo tavaları için geçici Fine görünümlü seçenekler (yalnız ana model)
+    /// <summary>Ana model düz tavaları için geçici Fine görünümlü seçenekler (SceneJob son dilimde verir).</summary>
+    public Options? TrayOpt;
     readonly Dictionary<long, uint>? _existing;            // kutu büyütme: zaten sahnede olanlar (Revit no → sahne no)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();
@@ -244,12 +291,13 @@ sealed class DocPass
         Dictionary<long, uint>? existing = null)
     {
         _c = c; _doc = doc; _toLocal = docToLocal; _toDoc = docToLocal.Inverse; _viewId = viewId; _linkName = linkName;
-        _docIdx = docIdx; _trayOpt = trayOpt; _existing = existing;
+        _docIdx = docIdx; TrayOpt = trayOpt; _existing = existing;
         if (existing != null) foreach (var kv in existing) _sceneId[kv.Key] = kv.Value;   // yeni elemanların bağlantıları eskilere de çözülsün
         _x0 = c.Min.X; _y0 = c.Min.Y; _z0 = c.Min.Z; _x1 = c.Max.X; _y1 = c.Max.Y; _z1 = c.Max.Z;
     }
 
-    public void Run()
+    /// <summary>Kutuya giren, okunacak elemanlar (hızlı ön eleme: kategori, dışlananlar, zaten yüklüler).</summary>
+    public List<ElementId> Prepare()
     {
         double x0 = double.MaxValue, y0 = double.MaxValue, z0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue, z1 = double.MinValue;
         foreach (var c in BoxResolver.Corners(_c.Min, _c.Max))
@@ -261,49 +309,65 @@ sealed class DocPass
         var outline = new Outline(new XYZ(x0, y0, z0), new XYZ(x1, y1, z1));
         var col = _viewId != null ? new FilteredElementCollector(_doc, _viewId) : new FilteredElementCollector(_doc);
         col.WhereElementIsNotElementType().WherePasses(new BoundingBoxIntersectsFilter(outline));
-        var scene = _c.Scene;
-
+        var res = new List<ElementId>();
         foreach (Element e in col)
         {
             if (e is RevitLinkInstance || e is ImportInstance || e.ViewSpecific) continue;
             var cat = e.Category;
             if (cat == null || cat.CategoryType != CategoryType.Model) continue;
-            var bic = cat.BuiltInCategory;
-            if (Excluded.Contains(bic)) continue;
+            if (Excluded.Contains(cat.BuiltInCategory)) continue;
             if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
-            GeometryElement? ge;
-            long tg = Stopwatch.GetTimestamp();
-            try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
-            finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
-            if (ge == null) continue;
-            _tone = Horizontal.Contains(bic) ? Tone.Horizontal
-                : Structure.Contains(bic) ? Tone.Structure
-                : PipeCats.Contains(bic) || DuctCats.Contains(bic) || ContainmentCats.Contains(bic)
-                  || ElectricalCats.Contains(bic) || MechEquipCats.Contains(bic) ? Tone.Mep
-                : Tone.General;
-            _emitted = false;
-            _id = (uint)scene.Labels.Count + 1;
-            Walk(ge, 0);
-            if (!_emitted) continue;
-
-            long ti = Stopwatch.GetTimestamp();
-            scene.Labels.Add(Label(e, cat));
-            scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name, Discipline(bic)));
-            scene.ElemRevitId.Add(e.Id.Value);
-            scene.ElemDoc.Add(_docIdx);
-            var (color, group, host) = QuickClassify(e, bic);
-            scene.ElemTag.Add("");
-            scene.ElemColor.Add((byte)color);
-            scene.ElemDetail.Add(DetailOf(bic, color, group));
-            scene.ElemGroup.Add(group);
-            scene.ElemCanon.Add(_id);
-            _sceneId[e.Id.Value] = _id;
-            if (host != null) _pendingHost.Add((_id, host.Value));
-            _c.InfoSeconds += SceneCollector.Ctx.Since(ti);
+            res.Add(e.Id);
         }
+        return res;
+    }
 
+    /// <summary>Tek elemanı okur. deferTrays ise düz tava okunmaz, false döner (Fine görünümle en sona kalır).</summary>
+    public bool Process(ElementId eid, bool deferTrays)
+    {
+        var scene = _c.Scene;
+        if (_doc.GetElement(eid) is not { } e || e.Category is not { } cat) return true;   // arada silinmiş
+        var bic = cat.BuiltInCategory;
+        if (deferTrays && bic == BuiltInCategory.OST_CableTray) return false;
+        GeometryElement? ge;
+        long tg = Stopwatch.GetTimestamp();
+        try { ge = e.get_Geometry(TrayOpt != null && bic == BuiltInCategory.OST_CableTray ? TrayOpt : _opt); } catch { return true; }
+        finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
+        if (ge == null) return true;
+        _tone = Horizontal.Contains(bic) ? Tone.Horizontal
+            : Structure.Contains(bic) ? Tone.Structure
+            : PipeCats.Contains(bic) || DuctCats.Contains(bic) || ContainmentCats.Contains(bic)
+              || ElectricalCats.Contains(bic) || MechEquipCats.Contains(bic) ? Tone.Mep
+            : Tone.General;
+        _emitted = false;
+        _id = (uint)scene.Labels.Count + 1;
+        Walk(ge, 0);
+        if (!_emitted) return true;
+
+        long ti = Stopwatch.GetTimestamp();
+        scene.Labels.Add(Label(e, cat));
+        scene.ElemCat.Add((ushort)scene.CatIndex(cat.Name, Discipline(bic)));
+        scene.ElemRevitId.Add(e.Id.Value);
+        scene.ElemDoc.Add(_docIdx);
+        var (color, group, host) = QuickClassify(e, bic);
+        scene.ElemTag.Add("");
+        scene.ElemColor.Add((byte)color);
+        scene.ElemDetail.Add(DetailOf(bic, color, group));
+        scene.ElemGroup.Add(group);
+        scene.ElemCanon.Add(_id);
+        _sceneId[e.Id.Value] = _id;
+        if (host != null) _pendingHost.Add((_id, host.Value));
+        _c.InfoSeconds += SceneCollector.Ctx.Since(ti);
+        return true;
+    }
+
+    /// <summary>Geçiş sonu: izolasyon/kaplama → taşıyıcısının sahne no'su (çakışmada aynı parça sayılsın).</summary>
+    public void Finish()
+    {
+        var scene = _c.Scene;
         foreach (var (id, host) in _pendingHost)
             if (_sceneId.TryGetValue(host, out var h)) scene.ElemCanon[(int)id - 1] = h;
+        _pendingHost.Clear();
     }
 
     // ---- ikinci adım: eleman bilgisi --------------------------------------------------------------------------------
