@@ -275,7 +275,48 @@ static class LocalServer
     public static void OpenInBrowser(string path)
     {
         string url = ViewerUrlFor(path) ?? Product.WebViewerUrl;
+        // Şirket ilkesi Edge'de grafik hızlandırmayı kapatmışsa (kullanıcı 2026-10-08: Edge 3B'yi işlemciyle çiziyor, kasıyor)
+        // ve Chrome yüklüyse Chrome'da açılır; Chrome ekran kartını kullanır.
+        if (EdgeAccelerationDisabled() && ChromePath() is { } chrome)
+        {
+            try { Process.Start(new ProcessStartInfo(chrome, $"\"{url}\"") { UseShellExecute = false }); return; } catch { }
+        }
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+    }
+
+    static bool EdgeAccelerationDisabled()
+    {
+        foreach (var root in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+        {
+            try
+            {
+                using var k = root.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Edge");
+                if (k?.GetValue("HardwareAccelerationModeEnabled") is int v && v == 0) return true;
+            }
+            catch { }
+        }
+        return false;
+    }
+
+    static string? ChromePath()
+    {
+        foreach (var root in new[] { Microsoft.Win32.Registry.CurrentUser, Microsoft.Win32.Registry.LocalMachine })
+        {
+            try
+            {
+                using var k = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe");
+                if (k?.GetValue(null) is string p && File.Exists(p)) return p;
+            }
+            catch { }
+        }
+        foreach (var p in new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Google\Chrome\Application\chrome.exe"),
+        })
+            if (File.Exists(p)) return p;
+        return null;
     }
 
     static bool EnsureStarted()
