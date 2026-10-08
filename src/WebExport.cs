@@ -102,9 +102,11 @@ static class WebExport
     public static Task Write(SceneData s, string path, Func<int, bool>? include = null, double[]? boxMin = null, double[]? boxMax = null) =>
         Task.Run(() => GlbWriter.Write(s, path, include, boxMin, boxMax));
 
-    /// <summary>Kaydedildi: dosya yolu, boyut; görüntüleyiciyi tarayıcıda aç / klasörü aç.</summary>
-    public static void ShowSaved(Window? owner, IntPtr ownerHwnd, string path, int elements)
+    /// <summary>Kaydedildi: dosya tarayıcıda kendiliğinden açılır (yerel sunucu); pencerede yol, boyut, süre, yeniden aç /
+    /// klasörü aç.</summary>
+    public static void ShowSaved(Window? owner, IntPtr ownerHwnd, string path, int elements, double seconds = -1)
     {
+        LocalServer.OpenInBrowser(path);
         var w = new Window
         {
             Title = L.T("Web'e aktarıldı", "Exported to web"), SizeToContent = SizeToContent.WidthAndHeight,
@@ -120,10 +122,11 @@ static class WebExport
         });
         double mb = 0;
         try { mb = new FileInfo(path).Length / 1048576.0; } catch { }
-        Line(L.T($"{elements:N0} eleman kaydedildi ({mb:0.0} MB).", $"{elements:N0} elements saved ({mb:0.0} MB)."), bold: true);
+        string took = seconds >= 0 ? L.T($" · {seconds:0} sn", $" · {seconds:0} s") : "";
+        Line(L.T($"{elements:N0} eleman kaydedildi ({mb:0.0} MB){took}.", $"{elements:N0} elements saved ({mb:0.0} MB){took}."), bold: true);
         Line(path);
-        Line(L.T("Dosya bilgisayarınızda kalır. Görüntüleyicide dosyayı sayfaya sürükleyin ya da \"Modellerim klasörü\" ile bu klasörü bir kez seçin.",
-                 "The file stays on your computer. In the viewer, drag the file onto the page, or pick this folder once with \"My models folder\"."));
+        Line(L.T("Tarayıcıda açıldı. Dosya bilgisayarınızda kalır; Revit açık olduğu sürece sayfayı yenileyince yeniden gelir. Daha sonra açmak için görüntüleyicide \"Modellerim klasörü\" ile bu klasörü bir kez seçin.",
+                 "Opened in the browser. The file stays on your computer; while Revit is open, reloading the page brings it back. To open it later, pick this folder once with \"My models folder\" in the viewer."));
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
         Button B(string t, Action a)
         {
@@ -131,17 +134,12 @@ static class WebExport
             b.Click += (_, _) => { try { a(); } catch { } };
             return b;
         }
-        var open = B(L.T("Görüntüleyicide aç", "Open the viewer"), () =>
-        {
-            Process.Start(new ProcessStartInfo(Product.WebViewerUrl) { UseShellExecute = true });
-            Process.Start("explorer.exe", $"/select,\"{path}\"");   // dosya sürüklenmeye hazır
-            w.Close();
-        });
-        open.IsDefault = true;
+        var open = B(L.T("Tarayıcıda yeniden aç", "Open in browser again"), () => LocalServer.OpenInBrowser(path));
         row.Children.Add(open);
         row.Children.Add(B(L.T("Klasörü aç", "Open folder"), () => Process.Start("explorer.exe", $"/select,\"{path}\"")));
         var ok = B(L.T("Kapat", "Close"), () => w.Close());
         ok.IsCancel = true;
+        ok.IsDefault = true;
         row.Children.Add(ok);
         stack.Children.Add(row);
         w.Content = stack;
@@ -215,5 +213,123 @@ sealed class ExportProgressWindow : Window
         _bar.Value = total == 0 ? 100 : 100.0 * done / total;
         SetText(L.T($"Tüm model okunuyor… %{(int)_bar.Value}  ({done:N0} / {total:N0} eleman)",
                     $"Reading the whole model… {(int)_bar.Value}%  ({done:N0} / {total:N0} elements)"));
+    }
+}
+
+/// <summary>İlerleme penceresi kendi iş parçacığında: tüm model aktarımı Revit'in aktarıcısıyla tek seferde çalışır ve
+/// bu sürede Revit'in iş parçacığı meşguldür. Pencere ayrı iş parçacığında olduğu için yüzde güncellenir ve İptal
+/// tepki verir (aktarıcı her elemanda iptale bakar). Sahibi Revit penceresi yapılmaz: farklı iş parçacığındaki sahiplik
+/// giriş kuyruklarını birleştirip pencereyi de dondurur — yerine en üstte durur.</summary>
+sealed class ProgressThread
+{
+    ExportProgressWindow? _win;
+    System.Windows.Threading.DispatcherTimer? _timer;
+    readonly System.Threading.ManualResetEventSlim _ready = new();
+
+    public ProgressThread(ReadControl ctl, Func<(int done, int total, string model)> poll)
+    {
+        var th = new System.Threading.Thread(() =>
+        {
+            _win = new ExportProgressWindow(IntPtr.Zero, ctl) { Topmost = true };
+            var timer = _timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+            timer.Tick += (_, _) =>
+            {
+                var (d, t, m) = poll();
+                _win.SetProgress(d, Math.Max(t, d));
+                _win.SetDetail(m, null);
+            };
+            _win.Closed += (_, _) => { timer.Stop(); System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown(); };
+            _win.Show();
+            timer.Start();
+            _ready.Set();
+            System.Windows.Threading.Dispatcher.Run();
+        });
+        th.SetApartmentState(System.Threading.ApartmentState.STA);
+        th.IsBackground = true;
+        th.Start();
+        _ready.Wait(3000);
+    }
+
+    /// <summary>Okuma bitti: yüzde güncellemesi durur, metin gösterilir (ör. "dosya yazılıyor").</summary>
+    public void SetText(string t) => _win?.Dispatcher.BeginInvoke(() => { _timer?.Stop(); _win.SetText(t); });
+
+    public void Close() => _win?.Dispatcher.BeginInvoke(() => { _win.Finished = true; _win.Close(); });
+}
+
+/// <summary>Aktarılan dosyayı tarayıcıda kendiliğinden açmak için yalnız bu bilgisayara açık küçük sunucu (kullanıcı
+/// isteği 2026-10-08: "sürükle bırak yaptırtma, kendin aç"). Web sayfası diskteki dosyayı kendisi okuyamaz; eklenti
+/// dosyayı http://127.0.0.1:&lt;port&gt;/&lt;rastgele anahtar&gt;/ adresinden verir — dosya yine bilgisayardan çıkmaz.
+/// Yalnız kayıtlı dosyalar verilir; Revit kapanınca sunucu da kapanır.</summary>
+static class LocalServer
+{
+    static System.Net.HttpListener? _listener;
+    static int _port;
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Files = new();
+
+    /// <summary>Dosyayı yayınlar, görüntüleyici adresini döner (sunucu başlatılamazsa null).</summary>
+    public static string? ViewerUrlFor(string path)
+    {
+        if (!EnsureStarted()) return null;
+        string token = Guid.NewGuid().ToString("N");
+        Files[token] = path;
+        string file = Uri.EscapeDataString(Path.GetFileName(path));
+        string src = $"http://127.0.0.1:{_port}/{token}/{file}";
+        return $"{Product.WebViewerUrl}?src={Uri.EscapeDataString(src)}&name={file}";
+    }
+
+    public static void OpenInBrowser(string path)
+    {
+        string url = ViewerUrlFor(path) ?? Product.WebViewerUrl;
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+    }
+
+    static bool EnsureStarted()
+    {
+        if (_listener != null) return true;
+        for (int p = 47321; p < 47341; p++)
+        {
+            var l = new System.Net.HttpListener();
+            l.Prefixes.Add($"http://127.0.0.1:{p}/");
+            try { l.Start(); }
+            catch { l.Close(); continue; }
+            _listener = l; _port = p;
+            var th = new System.Threading.Thread(Loop) { IsBackground = true, Name = "Smart3DView local server" };
+            th.Start();
+            return true;
+        }
+        return false;
+    }
+
+    static void Loop()
+    {
+        while (_listener is { IsListening: true } l)
+        {
+            System.Net.HttpListenerContext c;
+            try { c = l.GetContext(); } catch { return; }
+            System.Threading.ThreadPool.QueueUserWorkItem(_ => Serve(c));
+        }
+    }
+
+    static void Serve(System.Net.HttpListenerContext c)
+    {
+        var res = c.Response;
+        try
+        {
+            // HTTPS sayfasından yerel adrese istek: CORS + Chrome'un "özel ağ erişimi" ön isteği.
+            res.AddHeader("Access-Control-Allow-Origin", "*");
+            res.AddHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+            res.AddHeader("Access-Control-Allow-Headers", "*");
+            res.AddHeader("Access-Control-Allow-Private-Network", "true");
+            if (c.Request.HttpMethod == "OPTIONS") { res.StatusCode = 204; return; }
+            var parts = c.Request.Url!.AbsolutePath.Trim('/').Split('/');
+            if (parts.Length < 1 || !Files.TryGetValue(parts[0], out var path) || !File.Exists(path)) { res.StatusCode = 404; return; }
+            res.ContentType = "model/gltf-binary";
+            res.AddHeader("Cache-Control", "no-store");
+            using var f = File.OpenRead(path);
+            res.ContentLength64 = f.Length;
+            f.CopyTo(res.OutputStream);
+        }
+        catch { try { res.StatusCode = 500; } catch { } }
+        finally { try { res.Close(); } catch { } }
     }
 }

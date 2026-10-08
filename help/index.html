@@ -111,9 +111,10 @@
   <h2 id="en-web">Export to web</h2>
   <p>Open models in the browser with <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> — no install, Revit not needed. The <b>.glb</b> file stays on your computer; the browser opens it locally and never uploads it.</p>
   <ul>
-    <li><b>Whole model</b>: the <b>Export to web</b> button on the Revit ribbon, next to Smart3DView. Pick the linked models to include (all are ticked), choose where to save, and the model is read in small parts — Revit stays usable, and Cancel or <kbd>Esc</kbd> stops it.</li>
+    <li><b>Whole model</b>: the <b>Export to web</b> button on the Revit ribbon, next to Smart3DView. Pick the linked models to include (all are ticked) and where to save. The model is exported with Revit's own exporter (like Navisworks): the same family geometry is stored once, and linked models are cached, so a link that has not changed is not read again. Cancel or <kbd>Esc</kbd> stops it.</li>
     <li><b>Just this view</b>: <b>🌐 Export to web</b> in the 3D window saves what is open in that window (models hidden in the list at the top left are left out).</li>
   </ul>
+  <p>When the export finishes, the model opens in your browser by itself (the add-in hands the file to the page from this computer — it is never uploaded). The first time, the browser asks whether the site may access devices on your local network: click <b>Allow</b>.</p>
   <p>Files are saved to <code>DocumentsSmart3DView</code> by default. In the viewer, drag the file onto the page, or pick that folder once with <b>My models folder</b>.</p>
 
   <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
@@ -244,9 +245,10 @@
   <h2 id="tr-web">Web'e aktar</h2>
   <p>Modelleri <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> ile tarayıcıda açın — kurulum yok, Revit gerekmez. <b>.glb</b> dosyası bilgisayarınızda kalır; tarayıcı dosyayı yerelde açar, hiçbir yere yüklemez.</p>
   <ul>
-    <li><b>Tüm model</b>: Revit şeridinde Smart3DView'in yanındaki <b>Web'e aktar</b> düğmesi. Dahil edilecek bağlı modelleri seçin (hepsi işaretli gelir), kayıt yerini seçin; model parça parça okunur — Revit kullanılmaya devam eder, İptal ya da <kbd>Esc</kbd> durdurur.</li>
+    <li><b>Tüm model</b>: Revit şeridinde Smart3DView'in yanındaki <b>Web'e aktar</b> düğmesi. Dahil edilecek bağlı modelleri (hepsi işaretli gelir) ve kayıt yerini seçin. Model Revit'in kendi aktarıcısıyla aktarılır (Navisworks gibi): aynı aile geometrisi bir kez saklanır, bağlı modeller önbelleğe alınır — değişmeyen link yeniden okunmaz. İptal ya da <kbd>Esc</kbd> durdurur.</li>
     <li><b>Yalnız bu görünüm</b>: 3B penceredeki <b>🌐 Web'e aktar</b>, o pencerede açık olanı kaydeder (sol üstteki listede gizlenen modeller dahil edilmez).</li>
   </ul>
+  <p>Aktarım bitince model tarayıcıda kendiliğinden açılır (eklenti dosyayı sayfaya bu bilgisayardan verir — hiçbir yere yüklenmez). İlk seferde tarayıcı, sitenin yerel ağdaki cihazlara erişmesine izin verilip verilmeyeceğini sorar: <b>İzin ver</b>'e tıklayın.</p>
   <p>Dosyalar varsayılan olarak <code>BelgelerSmart3DView</code> klasörüne kaydedilir. Görüntüleyicide dosyayı sayfaya sürükleyin ya da bu klasörü <b>Modellerim klasörü</b> ile bir kez seçin.</p>
 
   <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>

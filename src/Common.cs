@@ -26,7 +26,7 @@ static class AddinVersion
 sealed class ReadControl
 {
     /// <summary>Esc → true; bir sonraki dilimde okuma bırakılır.</summary>
-    public bool Cancel;
+    public volatile bool Cancel;
     /// <summary>Okunacak yeni eleman sayısı ve tahmini süre (sn) → devam edilsin mi? null: sorulmaz.</summary>
     public System.Func<int, double, bool>? Confirm;
     /// <summary>Okunan, toplam.</summary>

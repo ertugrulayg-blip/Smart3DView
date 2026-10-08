@@ -103,22 +103,6 @@ sealed class RevitHost : IViewerHost
         Next(null!);
     }
 
-    /// <summary>Tüm model: ana model + bağlı modeller, görünümden bağımsız (gizli kategoriler de), sınırsız kutu,
-    /// Revit koordinatında. Web'e aktarım için (kullanıcı isteği 2026-10-08).</summary>
-    public static void ReadWholeModel(Document doc, Func<RevitLinkInstance?, Document, bool> include, ReadControl ctl, Action<SceneData?, string?> done)
-    {
-        RevitBridge.Post(_ =>
-        {
-            if (!doc.IsValidObject) { done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
-            const double R = 1e6;   // ft — modelin tamamı
-            var box = new ClipBox { Frame = Transform.Identity, Min = new XYZ(-R, -R, -R), Max = new XYZ(R, R, R), Source = doc.Title };
-            SceneJob job;
-            try { job = new SceneJob(doc, null, box, null, include); }
-            catch (Exception ex) { done(null, ex.Message); return; }
-            Run(job, doc, ctl, L.T("Aktarım iptal edildi.", "Export cancelled."), done, _ => { });
-        });
-    }
-
 
     public void ShowInRevit(object context, SceneData scene, uint sceneId, Action<string?> done)
     {

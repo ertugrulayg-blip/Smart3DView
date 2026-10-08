@@ -462,6 +462,33 @@ sealed class DocPass
         return (c, g, host);
     }
 
+    // ---- tüm model aktarımı (WebExportContext) için durum bilgisiz sınıflandırma ----------------------------------
+
+    internal static bool IsExcluded(BuiltInCategory bic) => Excluded.Contains(bic);
+
+    /// <summary>Çakışma grubu, "Detaylı" renk sınıfı ve izolasyon/kaplamanın taşıyıcısı — QuickClassify ile aynı kurallar
+    /// (sistem tipi parametresi okunmaz).</summary>
+    internal static (int group, byte detail, long? host) WebClass(Document doc, Element e, BuiltInCategory bic)
+    {
+        long? host = null;
+        if (e is InsulationLiningBase ins && doc.GetElement(ins.HostElementId) is { } h)
+        {
+            host = h.Id.Value;
+            bic = h.Category?.BuiltInCategory ?? bic;
+        }
+        var color = SysColor.None;
+        int group;
+        if (bic == BuiltInCategory.OST_Sprinklers) { color = SysColor.Fire; group = ClashGroup.PipeFire; }
+        else if (PipeCats.Contains(bic)) group = ClashGroup.PipeOther;
+        else if (DuctCats.Contains(bic)) group = ClashGroup.DuctOther;
+        else if (ContainmentCats.Contains(bic)) group = ClashGroup.Containment;
+        else if (ElectricalCats.Contains(bic)) group = ClashGroup.Electrical;
+        else if (MechEquipCats.Contains(bic)) group = ClashGroup.MechEquipment;
+        else if (bic is BuiltInCategory.OST_StructuralFraming or BuiltInCategory.OST_StructuralColumns) group = ClashGroup.Structure;
+        else group = ClashGroup.None;
+        return (group, DetailOf(bic, color, group), host);
+    }
+
     // ---- "Detaylı" ton rengi ---------------------------------------------------------------------------------------
 
     /// <summary>Tanınan tesisat sistemi rengi önce gelir; yoksa tesisat grubu, sonra kategori.</summary>
