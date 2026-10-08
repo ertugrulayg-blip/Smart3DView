@@ -26,7 +26,7 @@ Smart3DView opens the area you are working on in a separate, GPU-accelerated 3D 
 Every element type in its own color, so equipment is easy to tell apart: walls gray, doors near white, cable trays metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow — and pipes and ducts in their system colors.
 
 **Tones made for reading 3D**
-White, Light gray, Gray, Dark, Black and Paper (hidden-line look) — switch with one click or keys 1–8.
+White, Light gray, Gray, Dark and Paper (hidden-line look) — switch with one click or keys 1–7.
 
 **Colored MEP mode**
 The building stays gray while services are colored: chilled/cooling water pipes and their insulation blue, fire protection red, supply air ducts magenta, return and exhaust ducts green. Systems are recognized from Revit system classifications and system names.
@@ -73,7 +73,7 @@ https://schema-tools.net/privacy-policy.html
 1. In Revit open the Add-Ins tab and click Smart 3D View in the Smart3DView panel.
 2. What opens depends on the context: the selected elements (plus a small margin), the section box of the active 3D view, or — in a plan view — a rectangle you drag (height from the view range).
 3. Navigate: Shift + middle mouse to orbit, middle mouse to pan, wheel to zoom, double-click or F to fit. Left click selects an element and shows its category, type and ID.
-4. Choose a tone at the bottom right (keys 1–8). Detailed (default) gives every element type its own color; Colored colors only the cooling, fire protection, supply and return/exhaust systems.
+4. Choose a tone at the bottom right (keys 1–7). Detailed (default) gives every element type its own color; Colored colors only the cooling, fire protection, supply and return/exhaust systems.
 5. Box (B): drag the blue handles to move faces; Move (M) or Ctrl + drag slides the whole box. Areas beyond the loaded region are read from Revit when you release the mouse.
 6. Clash (C): elements clashing with a different service turn red and blue; click one to see its partner.
 7. Measure (D): click two points; the cursor snaps to corners, midpoints and edges. X / Y / Z lock the axis, Free releases it, Delete clears all measurements.
@@ -112,4 +112,4 @@ https://schema-tools.net/smart3dview/
 3b. Ölçü: yakalama işaretiyle bir 3B ölçü; yan panelde disiplin filtresi açık.
 4. Kutu düzenleme: mavi tutamaçlar görünür.
 5. Revit Proje Tarayıcısı → Renderings altında kaydedilmiş Smart3DView görüntüsü.
-6. (İsteğe bağlı) Siyah ya da Kağıt tonu.
+6. (İsteğe bağlı) Koyu ya da Kağıt tonu.

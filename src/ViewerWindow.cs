@@ -31,7 +31,6 @@ sealed record Palette(
         new("Açık gri", "Light gray", C(0xE4E4E4), C(0xB6B6B6), C(0xD4D4D4), C(0x262626), C(0x303030), 0.45, 0.60, 0.20, 0.14, 1.2, false, true),
         new("Gri", "Gray",            C(0x969696), C(0x5E5E5E), C(0xC2C2C2), C(0x1A1A1A), C(0x222222), 0.40, 0.65, 0.20, 0.15, 1.2, false, true),
         new("Koyu", "Dark",           C(0x404040), C(0x1C1C1C), C(0x9E9E9E), C(0x101010), C(0x262626), 0.38, 0.65, 0.22, 0.12, 1.2, false, true),
-        new("Siyah", "Black",         C(0x161616), C(0x000000), C(0x343434), C(0xE6E6E6), C(0xEDEDED), 0.35, 0.60, 0.25, 0.10, 1.0, true, true),
         // Kağıt: gerçek kâğıt gibi — üst/yan yüzler ve kesitler beyaza çok yakın (yalnız eğri yüzler hafif tonlanır ki borular kaybolmasın), kenarlar kalın siyah kalem çizgisi (kullanıcı isteği 2026-10-08).
         // Eskiden kesit poşesi siyahtı, kenarlar kalın → "kapkara" görünüyordu (kullanıcı raporu 2026-10-08).
         new("Kağıt", "Paper",         C(0xFFFFFF), C(0xFFFFFF), C(0xFFFFFF), C(0x101010), C(0xFFFFFF), 1.10, 0.14, 0.00, 0.00, 1.8, false, false),
@@ -699,7 +698,9 @@ sealed partial class ViewerWindow : Window
                 .ToDictionary(a => a[0].Trim(), a => a[1].Trim());
             double D(string k) => kv.TryGetValue(k, out var s) && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : double.NaN;
             // pv yoksa ayar "Detaylı" ton gelmeden önce yazılmış: bir kez yeni varsayılana geçilir, sonra kullanıcının seçimi korunur.
-            if (kv.TryGetValue("pv", out _) && kv.TryGetValue("palette", out var ps) && int.TryParse(ps, out var pi)) _palIndex = pi;
+            // pv=2: "Siyah" (4. sıra) kaldırılmadan önceki sıra (2026-10-08) → Siyah seçiliyse Koyu, sonrakiler bir geri.
+            if (kv.TryGetValue("pv", out var pv) && kv.TryGetValue("palette", out var ps) && int.TryParse(ps, out var pi))
+                _palIndex = Math.Clamp(pv == "2" && pi >= 4 ? Math.Max(3, pi - 1) : pi, 0, Palette.All.Length - 1);
             if (kv.TryGetValue("clashtol", out var ct) && int.TryParse(ct, out var cti) && Array.IndexOf(TolSteps, cti) >= 0) _clashTolMm = cti;
             if (kv.TryGetValue("tag", out var tg)) _tagOn = tg == "1";
             double l = D("left"), t = D("top"), w = D("width"), h = D("height");
@@ -724,7 +725,7 @@ sealed partial class ViewerWindow : Window
             var ci = CultureInfo.InvariantCulture;
             File.WriteAllLines(SettingsPath, new[]
             {
-                $"palette={_palIndex}", "pv=2",
+                $"palette={_palIndex}", "pv=3",
                 $"clashtol={_clashTolMm}",
                 $"tag={(_tagOn ? 1 : 0)}",
                 $"left={r.Left.ToString(ci)}", $"top={r.Top.ToString(ci)}",
