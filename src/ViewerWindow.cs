@@ -133,10 +133,11 @@ sealed partial class ViewerWindow : Window
                 "Save the view in high resolution to Revit (Project Browser → Renderings)  (P)"), TakePicture);
         _btnLic = MakeTool("", L.T("Lisans durumu / satın al", "License status / buy"), () => ShowLicense(null));
         _btnHelp = MakeTool("?", L.T("Hızlı başlangıç ve yardım  (F1)", "Quick start and help  (F1)"), Help.Open);
-        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnShot, _btnHelp }) _tools.Children.Add(b);
-        _btnTol.Visibility = Visibility.Collapsed;
-        _btnLockX.Visibility = _btnLockY.Visibility = _btnLockZ.Visibility = _btnFree.Visibility = _btnClear.Visibility = Visibility.Collapsed;
-        _btnMove.Visibility = _btnReset.Visibility = Visibility.Collapsed;
+        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnShot, _btnHelp }) _tools.Children.Add(b);
+        // Alt düğmeler çubuğa eklenmez: ana düğmenin ÜSTÜNDE ayrı bir şerit olarak açılır (kullanıcı isteği 2026-10-08).
+        _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
+        _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
+        _flyouts.Add(MakeFlyout(_btnClash, () => _clashOn, _btnTol));
 
         var barGrid = new Grid();
         barGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -182,7 +183,11 @@ sealed partial class ViewerWindow : Window
         _info.ToolTip = "GPU";
         _info.ToolTipOpening += (_, _) => _info.ToolTip = "GPU: " + (_view.Renderer.Length > 0 ? _view.Renderer : "?") + Environment.NewLine + _timing;
         _flashTimer.Tick += (_, _) => { _flashTimer.Stop(); _flash = null; UpdateStatus(); };
-        Activated += (_, _) => _view.FocusGl();
+        Activated += (_, _) => { _view.FocusGl(); RefreshFlyouts(); };
+        Deactivated += (_, _) => { foreach (var f in _flyouts) f.Popup.IsOpen = false; };   // popup en üstte kalır → başka uygulamaya geçince kapat
+        LocationChanged += (_, _) => RepositionFlyouts();
+        SizeChanged += (_, _) => RepositionFlyouts();
+        StateChanged += (_, _) => RefreshFlyouts();
         PreviewKeyDown += (_, e) => { if (e.Key == Key.F1) { Help.Open(); e.Handled = true; } };
         Action licChanged = () => Dispatcher.BeginInvoke(RefreshTools);
         Action<object> modelChanged = doc => Dispatcher.BeginInvoke(() =>
@@ -193,7 +198,7 @@ sealed partial class ViewerWindow : Window
         });
         License.Changed += licChanged;
         ModelWatch.Changed += modelChanged;
-        Closed += (_, _) => { _closed = true; License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
+        Closed += (_, _) => { _closed = true; foreach (var f in _flyouts) f.Popup.IsOpen = false; License.Changed -= licChanged; ModelWatch.Changed -= modelChanged; };   // statik olaylar kapanan pencereyi tutmasın
         Loaded += async (_, _) => { await License.Revalidate(); RefreshTools(); };
         Closing += (_, _) => SaveSettings();
 
@@ -237,7 +242,6 @@ sealed partial class ViewerWindow : Window
     {
         if (!_view.BoxMode && !RequireFull(L.T("Kutu düzenleme", "Box editing"))) return;
         _view.BoxMode = !_view.BoxMode;
-        _btnMove.Visibility = _btnReset.Visibility = _view.BoxMode ? Visibility.Visible : Visibility.Collapsed;
         if (!_view.BoxMode) _view.MoveMode = false;
         RefreshTools();
         Flash(_view.BoxMode
@@ -251,7 +255,6 @@ sealed partial class ViewerWindow : Window
     {
         if (!_view.MeasureMode && !RequireFull(L.T("Ölçü", "Measure"))) return;
         _view.MeasureMode = !_view.MeasureMode;
-        _btnLockX.Visibility = _btnLockY.Visibility = _btnLockZ.Visibility = _btnFree.Visibility = _btnClear.Visibility = _view.MeasureMode ? Visibility.Visible : Visibility.Collapsed;
         RefreshTools();
         UpdateStatus();
         _view.FocusGl();
@@ -471,6 +474,76 @@ sealed partial class ViewerWindow : Window
         return b;
     }
 
+    // ---- alt araç şeridi: ana düğmenin üstünde, çubuğun dışında ----------------------------------------------------
+
+    sealed class Flyout
+    {
+        public System.Windows.Controls.Primitives.Popup Popup = null!;
+        public Border Frame = null!, Anchor = null!;
+        public Func<bool> IsOn = null!;
+        public double Lift;   // yan yana iki şerit çakışırsa biri bir sıra yukarı
+    }
+    readonly System.Collections.Generic.List<Flyout> _flyouts = new();
+
+    /// <summary>3B görünüm bir HwndHost: WPF öğesi üstüne çizilemez → ayrı pencere (Popup). Ana düğmenin ortasına,
+    /// hemen üstüne yerleşir; araç açıkken ve pencere etkinken görünür (başka uygulamaya geçince gizlenir).</summary>
+    Flyout MakeFlyout(Border anchor, Func<bool> isOn, params Border[] buttons)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var b in buttons) row.Children.Add(b);
+        var frame = new Border { Child = row, Padding = new Thickness(3, 4, 3, 4), CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1) };
+        var fly = new Flyout { Frame = frame, Anchor = anchor, IsOn = isOn };
+        var popup = new System.Windows.Controls.Primitives.Popup
+        {
+            Child = frame, PlacementTarget = anchor, StaysOpen = true, AllowsTransparency = true,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Custom,
+            CustomPopupPlacementCallback = (popupSize, targetSize, _) => new[]
+            {
+                new System.Windows.Controls.Primitives.CustomPopupPlacement(
+                    new Point((targetSize.Width - popupSize.Width) / 2, -popupSize.Height - 7 - fly.Lift * popupSize.Height / Math.Max(1, frame.ActualHeight)),
+                    System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal),
+            },
+        };
+        fly.Popup = popup;
+        return fly;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+
+    void RefreshFlyouts()
+    {
+        bool visible = IsActive && WindowState != WindowState.Minimized && IsVisible && GetForegroundWindow() == new WindowInteropHelper(this).Handle;
+        bool dark = Luma(_pal.BgBottom) < 0.45;
+        foreach (var f in _flyouts)
+        {
+            f.Frame.Background = new SolidColorBrush(_pal.BgBottom);
+            f.Frame.BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x40, 0, 0, 0));
+            bool open = visible && f.IsOn();
+            if (f.Popup.IsOpen != open) f.Popup.IsOpen = open;
+        }
+        // Açık şeritler soldan sağa; öncekine değen bir sıra yukarı çıkar.
+        var rows = new System.Collections.Generic.List<double>();
+        foreach (var f in _flyouts.Where(f => f.Popup.IsOpen).OrderBy(f => f.Anchor.TranslatePoint(new Point(), this).X))
+        {
+            f.Frame.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double w = f.Frame.DesiredSize.Width, h = f.Frame.DesiredSize.Height;
+            double left = f.Anchor.TranslatePoint(new Point(f.Anchor.ActualWidth / 2, 0), this).X - w / 2;
+            int row = 0;
+            while (row < rows.Count && left < rows[row] + 6) row++;
+            if (row == rows.Count) rows.Add(0);
+            rows[row] = left + w;
+            f.Lift = row * (h + 6);
+        }
+        RepositionFlyouts();
+    }
+
+    /// <summary>Popup pencereyle birlikte kaymaz; ofseti dürterek yeniden yerleştirilir.</summary>
+    void RepositionFlyouts()
+    {
+        foreach (var f in _flyouts)
+            if (f.Popup.IsOpen) { f.Popup.HorizontalOffset += 0.01; f.Popup.HorizontalOffset -= 0.01; }
+    }
+
     void RefreshTools()
     {
         RefreshSide();
@@ -482,7 +555,6 @@ sealed partial class ViewerWindow : Window
             : L.T("🔒 Ücretsiz sürüm · Lisans al", "🔒 Free version · Get license");
         _btnLic.Visibility = st == LicenseState.Licensed ? Visibility.Collapsed : Visibility.Visible;
         _btnReload.Visibility = _host != null ? Visibility.Visible : Visibility.Collapsed;
-        _btnTol.Visibility = _clashOn ? Visibility.Visible : Visibility.Collapsed;
         ((TextBlock)_btnTol.Child).Text = TolText;
         ((TextBlock)_btnReload.Child).Text = "⟳  " + L.T("Yenile", "Reload") + (_stale ? " •" : "");
         foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnShot, false), (_btnHelp, false) })
@@ -501,6 +573,7 @@ sealed partial class ViewerWindow : Window
         }
         else _btnReload.ToolTip = L.T("Revit'te yapılan değişiklikleri yansıt — kamera, kutu, ton, çakışma ve seçim korunur  (R / F5)",
                                        "Reflect the changes made in Revit — camera, box, tone, clash and selection are kept  (R / F5)");
+        RefreshFlyouts();
     }
 
     // ---- lisans ---------------------------------------------------------------------------------------------------

@@ -57,14 +57,14 @@ static class SceneCollector
                     if (scene.ElemDoc[j] == di) map[scene.ElemRevitId[j]] = (uint)(j + 1);
                 existing[i] = map;
             }
-            trays[i] = i == 0 ? TraysInBox(ctx, d, toLocal, existing[i]) : new();   // Fine tava yalnız ana modelde
+            trays[i] = i == 0 ? TraysInBox(ctx, d, toLocal, existing[i]) : new();   // geçici Fine görünüm yalnız ana modelde (bağlılar: TrayOptions)
         }
 
         // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
         // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
         // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
         // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) eski davranış.
-        // Bağlı modellerin tavaları eski yolla okunur: bağlantının tüm geometrisini Fine görünümden alıp tavalara
+        // Bağlı modellerin tavaları kendi Fine görünümlerinden biriyle okunur (DocPass.TrayOptions). Bağlantının tüm geometrisini Fine görünümden alıp tavalara
         // eşleştirmek büyük modelde Revit'i dakikalarca kilitledi (1.12.0 denemesi, 2026-10-07) — kaldırıldı.
         Transaction? tmp = null;
         Options? trayOpt = null;
@@ -273,8 +273,10 @@ sealed class DocPass
             if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
             GeometryElement? ge;
             long tg = Stopwatch.GetTimestamp();
-            try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
-            finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
+            try { ge = e.get_Geometry(bic == BuiltInCategory.OST_CableTray && TrayOptions() is { } to ? to : _opt); } catch { ge = null; }
+            if (ge == null || !ge.GetEnumerator().MoveNext())   // tava o görünümde gizliyse normal okuma
+                try { ge = e.get_Geometry(_opt); } catch { ge = null; }
+            _c.GeometrySeconds += SceneCollector.Ctx.Since(tg);
             if (ge == null) continue;
             _tone = Horizontal.Contains(bic) ? Tone.Horizontal
                 : Structure.Contains(bic) ? Tone.Structure
@@ -304,6 +306,35 @@ sealed class DocPass
 
         foreach (var (id, host) in _pendingHost)
             if (_sceneId.TryGetValue(host, out var h)) scene.ElemCanon[(int)id - 1] = h;
+    }
+
+    Options? _linkTrayOpt;
+    bool _linkTrayDone;
+
+    /// <summary>Düz tavalar Revit'te yalnız Fine detaylı bir görünümle okunursa basamaklı/U gelir. Ana model: geçici
+    /// Fine görünüm. Bağlı model salt-okunur (görünüm açılamaz) → bağlantının KENDİ görünümlerinden Fine olan, tavaları
+    /// gizlemeyen biri kullanılır (3B öncelikli). Yoksa null → normal okuma.</summary>
+    Options? TrayOptions()
+    {
+        if (_trayOpt != null || _linkName == null) return _trayOpt;
+        if (_linkTrayDone) return _linkTrayOpt;
+        _linkTrayDone = true;
+        try
+        {
+            var trayCat = new ElementId(BuiltInCategory.OST_CableTray);
+            View? best = null;
+            foreach (View v in new FilteredElementCollector(_doc).OfClass(typeof(View)))
+            {
+                if (v.IsTemplate || v.DetailLevel != ViewDetailLevel.Fine) continue;
+                if (v.ViewType is not (ViewType.ThreeD or ViewType.FloorPlan or ViewType.CeilingPlan or ViewType.Section or ViewType.Elevation)) continue;
+                try { if (v.CanCategoryBeHidden(trayCat) && v.GetCategoryHidden(trayCat)) continue; } catch { continue; }
+                if (best == null || (v.ViewType == ViewType.ThreeD && best.ViewType != ViewType.ThreeD)) best = v;
+                if (best.ViewType == ViewType.ThreeD) break;
+            }
+            if (best != null) _linkTrayOpt = new Options { View = best, ComputeReferences = false, IncludeNonVisibleObjects = false };
+        }
+        catch { _linkTrayOpt = null; }
+        return _linkTrayOpt;
     }
 
     // ---- ikinci adım: eleman bilgisi --------------------------------------------------------------------------------
