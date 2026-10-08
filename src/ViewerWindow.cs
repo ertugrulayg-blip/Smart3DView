@@ -276,7 +276,7 @@ sealed partial class ViewerWindow : Window
         _busy = true;
         Flash(L.T("Genişleyen bölge Revit'ten okunuyor…  ·  Esc: iptal", "Reading the enlarged area from Revit…  ·  Esc: cancel"));
         string? selKey = _view.SelectedKey;
-        var ctl = NewRead(L.T("Genişleyen bölge okunuyor", "Reading the enlarged area"), confirm: true);
+        var ctl = NewRead(L.T("Genişleyen bölge okunuyor", "Reading the enlarged area"), confirm: false);   // uyarı kapalı: her büyütmede sormak sıkıcı, Esc ve yüzde yeterli (kullanıcı isteği 2026-10-08)
         // Yüklü elemanlar korunur; Revit'ten yalnız yeni giren elemanların geometrisi istenir (dilim dilim).
         _host.Recollect(_scene.Context, lo, hi, (scene, err) => Dispatcher.BeginInvoke(() =>
         {
