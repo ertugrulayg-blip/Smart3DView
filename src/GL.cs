@@ -25,6 +25,7 @@ static unsafe class GL
     public const uint PROGRAM_POINT_SIZE = 0x8642, DYNAMIC_DRAW = 0x88E8, BGRA = 0x80E1, MAX_RENDERBUFFER_SIZE = 0x84E8, POINTS = 0, POINT_SPRITE = 0x8861;
     public const uint MAX_SAMPLES = 0x8D57, MAJOR_VERSION = 0x821B, MINOR_VERSION = 0x821C, PACK_ALIGNMENT = 0x0D05;
     public const uint VERSION = 0x1F02, RENDERER = 0x1F01;
+    public const uint GEOMETRY_SHADER = 0x8DD9;
 
     const string Lib = "opengl32.dll";
     [DllImport(Lib, EntryPoint = "glClearColor")] public static extern void ClearColor(float r, float g, float b, float a);
@@ -89,6 +90,7 @@ static unsafe class GL
     public static delegate* unmanaged<uint, uint, void> BeginQuery;
     public static delegate* unmanaged<uint, void> EndQuery;
     public static delegate* unmanaged<uint, uint, int*, void> GetQueryObjectiv;
+    public static delegate* unmanaged<uint, uint, uint, uint, int, void> FramebufferTexture2D;
     public static delegate* unmanaged<uint, uint, ulong*, void> GetQueryObjectui64v;
 
     static bool _loaded;
@@ -147,6 +149,7 @@ static unsafe class GL
             BeginQuery = (delegate* unmanaged<uint, uint, void>)P("glBeginQuery");
             EndQuery = (delegate* unmanaged<uint, void>)P("glEndQuery");
             GetQueryObjectiv = (delegate* unmanaged<uint, uint, int*, void>)P("glGetQueryObjectiv");
+            FramebufferTexture2D = (delegate* unmanaged<uint, uint, uint, uint, int, void>)P("glFramebufferTexture2D");
             GetQueryObjectui64v = (delegate* unmanaged<uint, uint, ulong*, void>)P("glGetQueryObjectui64v");
             _loaded = true;
             return null;
@@ -182,6 +185,20 @@ static unsafe class GL
         int ok;
         GetProgramiv(p, LINK_STATUS, &ok);
         DeleteShader(v); DeleteShader(f);
+        if (ok == 0) throw new InvalidOperationException("Shader link: " + Log(p, true));
+        return p;
+    }
+
+    /// <summary>Geometri shader'lı program (kalem çizgisi: çizgiyi ekranda kalın şerit + uç taşması olarak üretir).</summary>
+    public static uint Program(string vs, string gs, string fs)
+    {
+        uint v = Shader(VERTEX_SHADER, vs), g = Shader(GEOMETRY_SHADER, gs), f = Shader(FRAGMENT_SHADER, fs);
+        uint p = CreateProgram();
+        AttachShader(p, v); AttachShader(p, g); AttachShader(p, f);
+        LinkProgram(p);
+        int ok;
+        GetProgramiv(p, LINK_STATUS, &ok);
+        DeleteShader(v); DeleteShader(g); DeleteShader(f);
         if (ok == 0) throw new InvalidOperationException("Shader link: " + Log(p, true));
         return p;
     }

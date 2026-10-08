@@ -19,7 +19,7 @@ sealed record Palette(
     string Tr, string En,
     Color BgTop, Color BgBottom, Color Surface, Color Edge, Color Cut,
     double Ambient, double Key, double Fill, double Sky, double EdgePx,
-    bool Dark, bool Tones, bool Colored = false, bool Detailed = false)
+    bool Dark, bool Tones, bool Colored = false, bool Detailed = false, bool Sketch = false)
 {
     public string Name => L.T(Tr, En);
 
@@ -31,9 +31,9 @@ sealed record Palette(
         new("Açık gri", "Light gray", C(0xE4E4E4), C(0xB6B6B6), C(0xD4D4D4), C(0x262626), C(0x303030), 0.45, 0.60, 0.20, 0.14, 1.2, false, true),
         new("Gri", "Gray",            C(0x969696), C(0x5E5E5E), C(0xC2C2C2), C(0x1A1A1A), C(0x222222), 0.40, 0.65, 0.20, 0.15, 1.2, false, true),
         new("Koyu", "Dark",           C(0x404040), C(0x1C1C1C), C(0x9E9E9E), C(0x101010), C(0x262626), 0.38, 0.65, 0.22, 0.12, 1.2, false, true),
-        // Kağıt: gerçek kâğıt gibi — üst/yan yüzler ve kesitler beyaza çok yakın (yalnız eğri yüzler hafif tonlanır ki borular kaybolmasın), kenarlar kalın siyah kalem çizgisi (kullanıcı isteği 2026-10-08).
+        // Kağıt: kalem çizimi gibi (GlView.Sketch) — buz beyazı zemin; üst/yan yüzler ve kesitler beyaza çok yakın (yalnız eğri yüzler hafif tonlanır ki borular kaybolmasın), kenarlar kalın siyah kalem çizgisi (kullanıcı isteği 2026-10-08).
         // Eskiden kesit poşesi siyahtı, kenarlar kalın → "kapkara" görünüyordu (kullanıcı raporu 2026-10-08).
-        new("Kağıt", "Paper",         C(0xFFFFFF), C(0xFFFFFF), C(0xFFFFFF), C(0x101010), C(0xFFFFFF), 1.10, 0.14, 0.00, 0.00, 1.8, false, false),
+        new("Kağıt", "Paper",         C(0xF5F9FC), C(0xE2EAF1), C(0xFFFFFF), C(0x141414), C(0xFFFFFF), 1.10, 0.14, 0.00, 0.00, 2.2, false, false, Sketch: true),
         new("Renkli", "Colored",      C(0xF4F4F2), C(0xD2D2D0), C(0xE8E8E8), C(0x2A2A2A), C(0x3A3A3A), 0.48, 0.58, 0.20, 0.12, 1.2, false, true, Colored: true),
         new("Detaylı", "Detailed",    C(0xF2F4F6), C(0xCDD3D9), C(0xE0E0E0), C(0x2A2A2A), C(0x3A3A3A), 0.46, 0.60, 0.20, 0.12, 1.1, false, true, Colored: true, Detailed: true),
     };

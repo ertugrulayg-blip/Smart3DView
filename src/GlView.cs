@@ -247,6 +247,7 @@ sealed unsafe partial class GlView : HwndHost
             GL.Del(GL.DeleteVertexArrays, ref _bgVao);
             GL.Del(GL.DeleteVertexArrays, ref _ovao);
             GL.Del(GL.DeleteBuffers, ref _ovbo);
+            FreeSketchGl();
             foreach (var p in new[] { _pSurf, _pEdge, _pBg, _pPick, _pOver }) if (p != 0) GL.DeleteProgram(p);
             GL.wglMakeCurrent(IntPtr.Zero, IntPtr.Zero);
             GL.wglDeleteContext(_ctx);
@@ -487,6 +488,7 @@ void main(){
         pkMvp = GL.Uniform(_pPick, "uMvp"); pkBoxMin = GL.Uniform(_pPick, "uBoxMin"); pkBoxMax = GL.Uniform(_pPick, "uBoxMax"); pkState = GL.Uniform(_pPick, "uState");
         _pOver = GL.Program(OverVs, OverFs);
         oMvp = GL.Uniform(_pOver, "uMvp"); oPoint = GL.Uniform(_pOver, "uPoint"); oSize = GL.Uniform(_pOver, "uSize");
+        InitSketchGl();
     }
 
     // ---- veri yükleme --------------------------------------------------------------------------------------------
@@ -795,7 +797,8 @@ void main(){
         GL.BindBuffer(GL.ELEMENT_ARRAY_BUFFER, _iboO);
         GL.DrawElements(GL.TRIANGLES, _opaqueCount, GL.UNSIGNED_INT, IntPtr.Zero);
 
-        if (_edgeCount > 0)
+        if (_edgeCount > 0 && Sketch) DrawSketchEdges(mvp, fade, lineWidth, vw, vh);
+        else if (_edgeCount > 0)
         {
             GL.UseProgram(_pEdge);
             fixed (float* m = mvp) GL.UniformMatrix4fv(eMvp, 1, 1, m);
@@ -840,6 +843,7 @@ void main(){
         GL.Disable(GL.POLYGON_OFFSET_FILL);
         GL.BindTexture(GL.TEXTURE_2D, 0);
         GL.BindVertexArray(0);
+        if (Sketch) DrawInk(fbo, vw, vh, mvp, lineWidth);   // dış hat + kesit çizgileri (kalem)
 
         if (overlay && _boxMode) DrawBoxOverlay(mvp);
         DrawMeasureOverlay(mvp, overlay);
