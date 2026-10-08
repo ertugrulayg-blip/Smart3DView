@@ -138,8 +138,8 @@ Your key arrives in your purchase email. Click the license button at the bottom 
 **On screen:** an area orbiting in the Paper tone; F1 and schema-tools.net/smart3dview on screen.
 
 **Narration:**
-That's it! If you get stuck, press F1 in the window to open the help page.
-Thanks for trying Smart3DView. We'd love to hear your feedback — see you in the next video!
+If you get stuck, press F1 in the window to open the help page. We'd love to hear your feedback.
+That's it — thanks for watching!
 
 ---
 

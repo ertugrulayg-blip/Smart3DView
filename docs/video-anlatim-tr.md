@@ -138,8 +138,8 @@ Anahtarınız satın alma e-postasıyla gelir. Pencerenin altındaki lisans dü�
 **Ekranda:** Kağıt tonunda dönen bir bölge; ekranda F1 ve schema-tools.net/smart3dview yazısı.
 
 **Anlatım:**
-Hepsi bu kadar! Takıldığınız bir yerde pencerede F1'e basarak yardım sayfasını açabilirsiniz.
-Smart3DView'i denediğiniz için teşekkürler. Görüş ve önerilerinizi bekliyoruz; bir sonraki videoda görüşmek üzere!
+Takıldığınız bir yerde pencerede F1'e basarak yardım sayfasını açabilirsiniz. Görüş ve önerilerinizi bekliyoruz.
+Hepsi bu kadar — izlediğiniz için teşekkürler!
 
 ---
 
