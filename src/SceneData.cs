@@ -100,7 +100,7 @@ sealed class SceneData
     /// <summary>Kutu büyütmede yeni elemanlar eklenecek kopya (pencere eskisini çizmeye devam ederken güvenle doldurulur).</summary>
     public SceneData CloneForAppend()
     {
-        var s = new SceneData { FormatLength = FormatLength, FrameAngle = FrameAngle, Source = Source };
+        var s = new SceneData { FormatLength = FormatLength, FrameAngle = FrameAngle, Source = Source, CumSeconds = CumSeconds, CumRead = CumRead };
         s.Vertices.AddRange(Vertices); s.Opaque.AddRange(Opaque); s.Glass.AddRange(Glass); s.Edges.AddRange(Edges);
         s.Labels.AddRange(Labels); s.ElemColor.AddRange(ElemColor); s.ElemDetail.AddRange(ElemDetail); s.ElemGroup.AddRange(ElemGroup);
         s.ElemCanon.AddRange(ElemCanon); s.Connected.UnionWith(Connected); s.Snaps.AddRange(Snaps);
@@ -117,6 +117,10 @@ sealed class SceneData
     public double[] BoxMin = new double[3], BoxMax = new double[3]; // Revit'ten okunan kutu (yerel)
     public object? Context; // Revit tarafı bağlamı (belge, görünüm, çerçeve) — pencere içeriğine dokunmaz
     public double Seconds, GeoSeconds, TriSeconds, InfoSeconds;   // okuma süresi ve dökümü (Revit geometri, üçgen+kenar, eleman bilgisi)
+    // Bu pencerede şimdiye kadarki tüm okumalar (ilk açılış + büyütmeler): süre ve okunan eleman → büyük alan uyarısında
+    // gerçek hıza göre süre tahmini (eleman başı süre modele göre çok değişiyor; 2026-10-08 6,5 dk süren okuma).
+    public double CumSeconds;
+    public int CumRead;
     public string Timing = ""; // okuma süresinin dökümü (teşhis için, bilgi yazısının ipucunda)
     public string Source = "";
     public int ElementCount => Labels.Count;

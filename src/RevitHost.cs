@@ -48,7 +48,7 @@ sealed class RevitHost : IViewerHost
 
     const double SliceSeconds = 0.1;   // bir dilimde en fazla bu kadar okunur, sonra Revit'e (ve pencereye) bırakılır
     const int ConfirmAbove = 3000;     // bundan çok yeni eleman varsa okumadan önce sorulur
-
+    const double ConfirmSeconds = 20;  // ya da tahmini süre bundan uzunsa
     public void Recollect(object context, double[] min, double[] max, Action<SceneData?, string?> done, SceneData? append = null, ReadControl? ctl = null)
     {
         var ctx = (RevitContext)context;
@@ -67,10 +67,12 @@ sealed class RevitHost : IViewerHost
             var view = ctx.Doc.GetElement(ctx.ViewId) as View;
             // Kurulum yalnız eleman listesini çıkarır (hızlı) → sayıya göre sorulur, sonra dilim dilim okunur.
             var job = new SceneJob(ctx.Doc, view, box, append);
-            if (ctl?.Confirm != null && job.Total >= ConfirmAbove)
+            // Tahmin: bu pencerenin gerçek okuma hızı (yeterli örnek yoksa ~2,6 ms/eleman — 8.465 eleman 22 sn).
+            double per = append != null && append.CumRead >= 300 ? append.CumSeconds / append.CumRead : 0.0026;
+            double est = job.Total * per;
+            if (ctl?.Confirm != null && (job.Total >= ConfirmAbove || est >= ConfirmSeconds))
             {
-                // Tahmin ~2,6 ms/eleman (gerçek model, 2026-10-08: 8.465 eleman 22 sn).
-                if (!ctl.Confirm(job.Total, job.Total * 0.0026)) { done(null, cancelled); return; }
+                if (!ctl.Confirm(job.Total, est)) { done(null, cancelled); return; }
             }
 
             void Next(UIApplication _)

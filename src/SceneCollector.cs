@@ -196,6 +196,8 @@ sealed class SceneJob
         scene.BoxMin = new[] { _box.Min.X, _box.Min.Y, _box.Min.Z };
         scene.BoxMax = new[] { _box.Max.X, _box.Max.Y, _box.Max.Z };
         scene.Seconds = ctx.Watch.Elapsed.TotalSeconds;
+        scene.CumSeconds += scene.Seconds;
+        scene.CumRead += _done;
         scene.GeoSeconds = ctx.GeometrySeconds; scene.TriSeconds = ctx.TriSeconds + ctx.EdgeSeconds; scene.InfoSeconds = ctx.InfoSeconds;
         scene.Timing = L.T(
             $"Revit geometri {ctx.GeometrySeconds:0.00} sn · üçgenleme {ctx.TriSeconds:0.00} sn · kenar {ctx.EdgeSeconds:0.00} sn · sistem bilgisi {ctx.InfoSeconds:0.00} sn · toplam {scene.Seconds:0.00} sn",
