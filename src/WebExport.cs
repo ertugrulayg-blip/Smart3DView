@@ -147,7 +147,7 @@ static class WebExport
     }
 }
 
-/// <summary>Tüm model aktarımında ilerleme: Revit çalışmaya devam eder; İptal / Esc okumayı bir sonraki dilimde bırakır.</summary>
+/// <summary>Web'e aktarım ilerlemesi: yüzde, okunan model, İptal / Esc (aktarıcı her elemanda iptale bakar).</summary>
 sealed class ExportProgressWindow : Window
 {
     readonly TextBlock _text = new() { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
@@ -172,11 +172,6 @@ sealed class ExportProgressWindow : Window
         stack.Children.Add(_bar);
         stack.Children.Add(_model);
         stack.Children.Add(_slow);
-        stack.Children.Add(new TextBlock
-        {
-            Text = L.T("Revit'te çalışmaya devam edebilirsiniz.", "You can keep working in Revit."),
-            Opacity = 0.6, FontSize = 11, Margin = new Thickness(0, 6, 0, 0),
-        });
         stack.Children.Add(cancel);
         Content = stack;
         SetText(L.T("Model hazırlanıyor…", "Preparing the model…"));
