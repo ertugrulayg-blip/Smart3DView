@@ -26,6 +26,7 @@ public class App : IExternalApplication
         // F1: Revit, düğmenin üzerindeyken çevrimiçi hızlı başlangıç sayfasını açar (Autodesk yönergesi: contextual help).
         button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
         panel.AddItem(button);
+#if !STORE   // Autodesk mağaza paketinde yok (açıklamada yer almıyor)
         // Tüm model → Smart3DView Web (.glb, bilgisayarda kalır). Seçilen bağlı modellerle, dilim dilim.
         var web = new PushButtonData("Smart3DViewWeb", L.T("Web'e\naktar", "Export\nto web"), dll, typeof(WebExportCommand).FullName)
         {
@@ -38,6 +39,7 @@ public class App : IExternalApplication
         };
         web.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
         panel.AddItem(web);
+#endif
         RevitBridge.Event = ExternalEvent.Create(new RevitBridge());
         // Model değişince açık pencere "Yenile" düğmesini uyarır. Kendi işlemlerimiz (Görüntü al → ImageView) sayılmaz.
         app.ControlledApplication.DocumentChanged += (_, e) =>

@@ -23,6 +23,11 @@ $addinId = "e9df1ea9-a971-47dc-9114-30a8eae5f929"       # Smart3DView.addin.temp
 $upgrade = "{8C2D5A71-3E94-4B6F-A0D2-7F1E6C93B458}"      # sabit: tüm sürümler aynı ürün
 $utf8    = New-Object Text.UTF8Encoding $false
 $help    = Join-Path $root "help\index.html"
+# Mağaza yardımı: "Web'e aktar" bölümleri (<!--web--> … <!--/web-->) çıkarılır — mağaza sürümünde bu özellik yok.
+$helpText = [IO.File]::ReadAllText($help, $utf8)
+$helpText = [regex]::Replace($helpText, '(?s)<!--web-->.*?<!--/web-->\r?\n?', '')
+$help = Join-Path $env:TEMP "Smart3DView-store-help.html"
+[IO.File]::WriteAllText($help, $helpText, $utf8)
 
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 $comps = ""
@@ -33,10 +38,11 @@ foreach ($y in $Years) {
     Remove-Item (Join-Path $proj "obj"), (Join-Path $proj "bin") -Recurse -Force -ErrorAction SilentlyContinue
     $dst = Join-Path $bundle "Contents\$y"
     Write-Host "Revit $y derleniyor..."
-    $pa = @("publish", $csproj, "-c", "Release", "-o", $dst, "-p:RevitDir=$rd")
+    $pa = @("publish", $csproj, "-c", "Release", "-o", $dst, "-p:RevitDir=$rd", "-p:Store=true")   # mağaza: Web'e aktar yok
     & $dotnet @pa | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "publish başarısız ($y)" }
     Get-ChildItem $dst -Recurse -Include *.pdb, *.template | Remove-Item -Force
+    if (Test-Path (Join-Path $dst "help\index.html")) { Copy-Item $help (Join-Path $dst "help\index.html") -Force }
     # Assembly yolu .addin dosyasına göre göreli (paket her yere kurulabilsin)
     $addin = @"
 <?xml version="1.0" encoding="utf-8"?>

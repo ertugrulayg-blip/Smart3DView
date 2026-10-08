@@ -137,7 +137,11 @@ sealed partial class ViewerWindow : Window
                 "Save the view in high resolution to Revit (Project Browser → Renderings)  (P)"), TakePicture);
         _btnLic = MakeTool("", L.T("Lisans durumu / satın al", "License status / buy"), () => ShowLicense(null));
         _btnHelp = MakeTool("?", L.T("Hızlı başlangıç ve yardım  (F1)", "Quick start and help  (F1)"), Help.Open);
+#if STORE   // Autodesk mağaza paketinde "Web'e aktar" yok (açıklamada yer almıyor)
+        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnShot, _btnHelp }) _tools.Children.Add(b);
+#else
         foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnWeb, _btnShot, _btnHelp }) _tools.Children.Add(b);
+#endif
         // Alt düğmeler çubuğa eklenmez: ana düğmenin ÜSTÜNDE ayrı bir şerit olarak açılır (kullanıcı isteği 2026-10-08).
         _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));

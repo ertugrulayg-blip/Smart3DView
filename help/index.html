@@ -52,7 +52,7 @@
 <main data-l="en">
   <div class="toc">
     <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
-    <a href="#en-tones">Tones, Colored &amp; Detailed modes</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><a href="#en-web">Export to web</a><a href="#en-panel">Models, tags &amp; view cube</a>
+    <a href="#en-tones">Tones, Colored &amp; Detailed modes</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><!--web--><a href="#en-web">Export to web</a><!--/web--><a href="#en-panel">Models, tags &amp; view cube</a>
     <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
     <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
   </div>
@@ -108,6 +108,7 @@
   <h2 id="en-pic">Take picture</h2>
   <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>. When it is saved, a small window shows the picture, where it went in Revit and buttons to open the PNG or its folder.</p>
 
+  <!--web-->
   <h2 id="en-web">Export to web</h2>
   <p>Open models in the browser with <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> — no install, Revit not needed. The <b>.glb</b> file stays on your computer; the browser opens it locally and never uploads it.</p>
   <ul>
@@ -118,6 +119,7 @@
   <p>Files are saved to <code>Documents\Smart3DView</code> by default. In the viewer, drag the file onto the page, or pick that folder once with <b>My models folder</b>.</p>
   <p><b>If the browser view stutters</b>, look at the right of its bottom bar: it shows which graphics card the browser uses. <i>Microsoft Basic Render Driver</i> or <i>SwiftShader</i> means graphics acceleration is off in the browser (turn on “Use graphics acceleration when available”; on company computers this is often locked in Edge only, so the add-in then opens the model in Chrome if it is installed). <i>Intel UHD / Iris</i> on a laptop with an NVIDIA / AMD card means the browser runs on the built-in chip: Windows Settings → System → Display → Graphics → the browser → High performance, then reopen the browser. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Step-by-step setup</a></p>
 
+  <!--/web-->
   <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
   <ul>
     <li><b>Models</b> (top left): the host file and every linked model are listed with their element counts. Click a name to hide or show that whole model; hidden models are left out of clash detection.</li>
@@ -187,7 +189,7 @@
 <main data-l="tr">
   <div class="toc">
     <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
-    <a href="#tr-tones">Tonlar, Renkli ve Detaylı mod</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><a href="#tr-web">Web'e aktar</a><a href="#tr-panel">Modeller, etiket ve küp</a>
+    <a href="#tr-tones">Tonlar, Renkli ve Detaylı mod</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><!--web--><a href="#tr-web">Web'e aktar</a><!--/web--><a href="#tr-panel">Modeller, etiket ve küp</a>
     <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
     <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
   </div>
@@ -243,6 +245,7 @@
   <h2 id="tr-pic">Görüntü al</h2>
   <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır. Kaydedilince küçük bir pencere görüntüyü, Revit'te nereye kaydedildiğini ve PNG'yi ya da klasörünü açan düğmeleri gösterir.</p>
 
+  <!--web-->
   <h2 id="tr-web">Web'e aktar</h2>
   <p>Modelleri <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> ile tarayıcıda açın — kurulum yok, Revit gerekmez. <b>.glb</b> dosyası bilgisayarınızda kalır; tarayıcı dosyayı yerelde açar, hiçbir yere yüklemez.</p>
   <ul>
@@ -253,6 +256,7 @@
   <p>Dosyalar varsayılan olarak <code>Belgeler\Smart3DView</code> klasörüne kaydedilir. Görüntüleyicide dosyayı sayfaya sürükleyin ya da bu klasörü <b>Modellerim klasörü</b> ile bir kez seçin.</p>
   <p><b>Tarayıcıdaki görüntü kasıyorsa</b> alt çubuğun sağına bakın: tarayıcının hangi ekran kartını kullandığı yazar. <i>Microsoft Basic Render Driver</i> ya da <i>SwiftShader</i> → tarayıcıda grafik hızlandırma kapalı (“Kullanılabilir olduğunda grafik hızlandırmayı kullan”ı açın; şirket bilgisayarlarında bu çoğu zaman yalnız Edge'de kilitlidir, eklenti o zaman modeli yüklüyse Chrome'da açar). Dizüstünde NVIDIA / AMD kart varken <i>Intel UHD / Iris</i> → tarayıcı dahili kartta çalışıyor: Windows Ayarlar → Sistem → Ekran → Grafikler → tarayıcı → Yüksek performans, sonra tarayıcıyı yeniden açın. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Adım adım ayar</a></p>
 
+  <!--/web-->
   <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>
   <ul>
     <li><b>Modeller</b> (sol üst): ana dosya ve her bağlı model eleman sayısıyla listelenir. Bir ada tıklayınca o modelin tamamı gizlenir ya da gösterilir; gizli modeller çakışma denetimine girmez.</li>

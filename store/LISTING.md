@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.13.0-store.zip` (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.16.2-store.zip` (Web'e aktar YOK: mağaza derlemesi `-p:Store=true`) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -11,7 +11,7 @@ Form: Desktop-based App · Win64 · English. Dosyalar:
 Smart3DView – Fast 3D Section Box Viewer
 
 ## App Short Description (≤ 200)
-Open any part of your Revit model in its own fast 3D window: clean grayscale tones, colored MEP systems, clash detection between services, live section box editing and one-click pictures.
+Open any part of your Revit model in its own fast 3D window: detailed colors, pencil-sketch and grayscale tones, color by model, clash detection, 3D measuring, live section box editing and pictures.
 
 ## App Description (≤ 4000)
 Smart3DView opens the area you are working on in a separate, GPU-accelerated 3D window that you can keep on a second screen while you model. It is built to make 3D easy to read: no materials, no clutter, just clean tones, crisp edges and solid poché where the section box cuts.
@@ -26,10 +26,13 @@ Smart3DView opens the area you are working on in a separate, GPU-accelerated 3D 
 Every element type in its own color, so equipment is easy to tell apart: walls gray, doors near white, cable trays metallic, ducts galvanized, mechanical equipment violet, electrical equipment amber, lighting yellow — and pipes and ducts in their system colors.
 
 **Tones made for reading 3D**
-White, Light gray, Gray, Dark and Paper (hidden-line look) — switch with one click or keys 1–7.
+White, Light gray, Gray, Dark and Paper — a hand-drawn pencil sketch on an ice-white background with every element and every cut face outlined — switch with one click or keys 1–7.
 
-**Colored MEP mode**
-The building stays gray while services are colored: chilled/cooling water pipes and their insulation blue, fire protection red, supply air ducts magenta, return and exhaust ducts green. Systems are recognized from Revit system classifications and system names.
+**Colored by model**
+The host model and every linked model get their own pastel color, with a legend next to the model list — see at a glance which file an element comes from.
+
+**Large areas without waiting**
+Big section boxes are read in slices with a progress bar; press Esc to cancel at any time.
 
 **Clash detection between services**
 One click highlights touching or overlapping elements of different services in two colors — one side red, the other blue — so you can see at a glance which is which: cooling vs. ducts, ducts vs. fire protection, cable trays vs. mechanical, MEP vs. beams and columns. Parts of the same run (a pipe and its own elbow or coupling), elements connected through connectors and a pipe with its own insulation are not reported. Click a clashing element to see what it clashes with. Hidden categories are skipped. Works across linked models.
@@ -62,8 +65,8 @@ Every feature is available for 14 days. After the trial, grayscale 3D viewing re
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.13.0
-- Version Description: Initial release — supports Revit 2025, 2026 and 2027. Includes Detailed color mode, clash tolerance, faster box growing, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube, live tags and two-color clash display.
+- Version Number: 1.16.2
+- Version Description: Supports Revit 2025, 2026 and 2027. New: Paper tone is now a hand-drawn pencil sketch (all edges and cut faces outlined); Colored mode gives each model its own pastel color with a legend; large section boxes are read in slices with progress and Esc to cancel; Box, Measure and Clash options open as floating strips above the toolbar; the Black tone was removed. Also includes Detailed color mode, clash tolerance, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube and live tags.
 
 ## Commands (Add Commands)
 - Command: **Smart 3D View** — Ribbon: Add-Ins tab → Smart3DView panel.
@@ -73,7 +76,7 @@ https://schema-tools.net/privacy-policy.html
 1. In Revit open the Add-Ins tab and click Smart 3D View in the Smart3DView panel.
 2. What opens depends on the context: the selected elements (plus a small margin), the section box of the active 3D view, or — in a plan view — a rectangle you drag (height from the view range).
 3. Navigate: Shift + middle mouse to orbit, middle mouse to pan, wheel to zoom, double-click or F to fit. Left click selects an element and shows its category, type and ID.
-4. Choose a tone at the bottom right (keys 1–7). Detailed (default) gives every element type its own color; Colored colors only the cooling, fire protection, supply and return/exhaust systems.
+4. Choose a tone at the bottom right (keys 1–7). Detailed (default) gives every element type its own color; Colored gives the host model and each linked model its own pastel color; Paper draws a pencil sketch.
 5. Box (B): drag the blue handles to move faces; Move (M) or Ctrl + drag slides the whole box. Areas beyond the loaded region are read from Revit when you release the mouse.
 6. Clash (C): elements clashing with a different service turn red and blue; click one to see its partner.
 7. Measure (D): click two points; the cursor snaps to corners, midpoints and edges. X / Y / Z lock the axis, Free releases it, Delete clears all measurements.
@@ -100,14 +103,13 @@ Support: schematoolssupp@outlook.com or https://schema-tools.net/contact.html. W
 ## Known Issues
 - Requires OpenGL 3.3; in some remote desktop sessions or virtual machines without a graphics driver the 3D window cannot start (a message is shown).
 - Opening a very large area can take several seconds while geometry is read from Revit; navigation is fast once it is open.
-- Colored mode recognizes systems by classification and name; systems with unusual names stay gray.
 
 ## Learn More Url
 https://schema-tools.net/smart3dview/
 
 ## Ekran görüntüleri (gerçek Revit modelinden, ≤ 2 MB)
 1. Gri tonlarda bir bina bölümü (Açık gri ya da Beyaz), kesit poşesi görünür.
-2. Renkli mod: soğutma (mavi), yangın (kırmızı), üfleme (magenta), dönüş (yeşil) bir arada.
+2. Renkli mod: ana model ve bağlı modeller ayrı pastel renklerde, sol üstte açıklama; ya da Kağıt (kalem eskizi).
 3. Çakışma: kırmızı/mavi elemanlar + alt çubukta "clashes with …" yazısı.
 3b. Ölçü: yakalama işaretiyle bir 3B ölçü; yan panelde disiplin filtresi açık.
 4. Kutu düzenleme: mavi tutamaçlar görünür.
