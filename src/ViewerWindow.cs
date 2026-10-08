@@ -219,7 +219,6 @@ sealed partial class ViewerWindow : Window
         _view.SetScene(scene, keepView);
         _view.SetHiddenModels(_hidden);
         _loadSeconds = sw.Elapsed.TotalSeconds;
-        if (!keepView && scene.LinkTraysTotal > 0) Flash(TrayNote(scene).TrimStart(' ', '·'));
         if (_clashOn) _ = RunClash();
         UpdateStatus();
         RefreshSide();
@@ -229,16 +228,12 @@ sealed partial class ViewerWindow : Window
     double _loadSeconds;
 
     /// <summary>Okuma süresinin dökümü — nerede beklendiği görünsün (kullanıcı isteği 2026-10-07: "nerede zorlanıyor tespit et").</summary>
-    /// <summary>Teşhis: bağlı modeldeki tavalardan kaçı Fine (basamaklı) okunabildi, ne kadar sürdü.</summary>
-    static string TrayNote(SceneData s) => s.LinkTraysTotal == 0 ? "" : L.T(
-        $" · bağlı tava Fine {s.LinkTrays}/{s.LinkTraysTotal} ({s.LinkTraySeconds:0.0} sn)", $" · linked trays Fine {s.LinkTrays}/{s.LinkTraysTotal} ({s.LinkTraySeconds:0.0} s)");
-
     string Breakdown(SceneData s)
     {
         double other = Math.Max(0, s.Seconds - s.GeoSeconds - s.TriSeconds - s.InfoSeconds);
         return L.T(
-            $"{s.Seconds + _loadSeconds:0.0} sn: Revit geometri {s.GeoSeconds:0.0} · üçgenleme {s.TriSeconds:0.0} · eleman adı/sınıfı {s.InfoSeconds:0.0} · tarama/hazırlık {other:0.0} · pencereye yükleme {_loadSeconds:0.0}" + TrayNote(s),
-            $"{s.Seconds + _loadSeconds:0.0} s: Revit geometry {s.GeoSeconds:0.0} · triangulation {s.TriSeconds:0.0} · element name/class {s.InfoSeconds:0.0} · scan/setup {other:0.0} · upload to window {_loadSeconds:0.0}" + TrayNote(s));
+            $"{s.Seconds + _loadSeconds:0.0} sn: Revit geometri {s.GeoSeconds:0.0} · üçgenleme {s.TriSeconds:0.0} · eleman adı/sınıfı {s.InfoSeconds:0.0} · tarama/hazırlık {other:0.0} · pencereye yükleme {_loadSeconds:0.0}",
+            $"{s.Seconds + _loadSeconds:0.0} s: Revit geometry {s.GeoSeconds:0.0} · triangulation {s.TriSeconds:0.0} · element name/class {s.InfoSeconds:0.0} · scan/setup {other:0.0} · upload to window {_loadSeconds:0.0}");
     }
 
     // ---- araçlar -------------------------------------------------------------------------------------------------

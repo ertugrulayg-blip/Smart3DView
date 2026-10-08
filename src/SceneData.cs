@@ -117,8 +117,6 @@ sealed class SceneData
     public double[] BoxMin = new double[3], BoxMax = new double[3]; // Revit'ten okunan kutu (yerel)
     public object? Context; // Revit tarafı bağlamı (belge, görünüm, çerçeve) — pencere içeriğine dokunmaz
     public double Seconds, GeoSeconds, TriSeconds, InfoSeconds;   // okuma süresi ve dökümü (Revit geometri, üçgen+kenar, eleman bilgisi)
-    public double LinkTraySeconds;
-    public int LinkTrays, LinkTraysTotal;   // bu okumada bağlı modelden Fine gelen / kutudaki bağlı tava sayısı (teşhis)
     public string Timing = ""; // okuma süresinin dökümü (teşhis için, bilgi yazısının ipucunda)
     public string Source = "";
     public int ElementCount => Labels.Count;

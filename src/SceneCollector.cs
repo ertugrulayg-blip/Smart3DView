@@ -57,25 +57,20 @@ static class SceneCollector
                     if (scene.ElemDoc[j] == di) map[scene.ElemRevitId[j]] = (uint)(j + 1);
                 existing[i] = map;
             }
-            trays[i] = TraysInBox(ctx, d, toLocal, existing[i]);
+            trays[i] = i == 0 ? TraysInBox(ctx, d, toLocal, existing[i]) : new();   // Fine tava yalnız ana modelde
         }
 
         // Düz kablo tavaları (ladder/kafes) Revit'te yalnız FINE detaylı bir görünümden okunursa basamaklı gelir;
         // görünümsüz Options.DetailLevel=Fine onlarda işe yaramıyor (kullanıcı raporu, 2026-10-07: "fittingler fine,
         // tavalar coarse"). Geri alınan bir işlem içinde geçici Fine 3B görünüm açılır, tavalar onunla okunur, sonra
         // RollBack → modelde iz kalmaz. Açılamazsa (salt-okunur belge vb.) eski davranış.
-        // Bağlı model: API ana modelin görünümünü bağlı elemana uygulatmıyor; bağlı modelin kendi Fine görünümleri de
-        // işe yaramadı (1.13.1, 2026-10-08). Tek yol bağlantı örneğini bu görünümden okumak — ama bütün bağlantı
-        // Revit'i dakikalarca kilitledi (1.12.0). Bu yüzden geçici görünümde tava ve bağlantı dışındaki tüm model
-        // kategorileri gizlenir → yalnız tavalar gelir, eksenlerine göre eşlenir. (Kesit kutusu konmaz: ana model tavalarını
-        // kesebilir, kutu büyütmede kesik kalırlar.)
-        bool anyTray = false;
-        for (int i = 0; i < passes.Count; i++) anyTray |= idx[i] != 255 && trays[i].Count > 0;
+        // Bağlı modellerin tavaları eski yolla okunur: bağlantının tüm geometrisini Fine görünümden alıp tavalara
+        // eşleştirmek büyük modelde Revit'i dakikalarca kilitledi (1.12.0 denemesi, 2026-10-07) — kaldırıldı.
         Transaction? tmp = null;
         Options? trayOpt = null;
         try
         {
-            if (anyTray && !doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument)
+            if (trays[0]?.Count > 0 && idx[0] != 255 && !doc.IsReadOnly && !doc.IsModifiable && !doc.IsFamilyDocument)
             {
                 ViewFamilyType? vft = null;
                 foreach (ViewFamilyType t in new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)))
@@ -88,16 +83,6 @@ static class SceneCollector
                         var fv = View3D.CreateIsometric(doc, vft.Id);
                         if (fv.ViewTemplateId != ElementId.InvalidElementId) fv.ViewTemplateId = ElementId.InvalidElementId;
                         fv.DetailLevel = ViewDetailLevel.Fine;
-                        var keep = new HashSet<long> { (long)BuiltInCategory.OST_CableTray, (long)BuiltInCategory.OST_RvtLinks };
-                        foreach (Category cat in doc.Settings.Categories)
-                        {
-                            try
-                            {
-                                if (cat.CategoryType == CategoryType.Model && !keep.Contains(cat.Id.Value) && fv.CanCategoryBeHidden(cat.Id))
-                                    fv.SetCategoryHidden(cat.Id, true);
-                            }
-                            catch { }
-                        }
                         doc.Regenerate();
                         trayOpt = new Options { View = fv, ComputeReferences = false, IncludeNonVisibleObjects = false };
                     }
@@ -112,17 +97,8 @@ static class SceneCollector
             {
                 if (idx[i] == 255) continue;
                 var (_, d, toLocal, li) = passes[i];
-                Dictionary<long, List<Solid>>? linkTrays = null;
-                if (li != null) ctx.LinkTraysTotal += trays[i].Count;
-                if (li != null && trayOpt != null && trays[i].Count > 0)
-                {
-                    long t0 = Stopwatch.GetTimestamp();
-                    try { linkTrays = LinkTraySolids(li, trayOpt, trays[i]); } catch { linkTrays = null; }
-                    ctx.GeometrySeconds += Ctx.Since(t0); ctx.LinkTraySeconds += Ctx.Since(t0);
-                    ctx.LinkTrays += linkTrays?.Count ?? 0;
-                }
                 new DocPass(ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, idx[i],
-                    li == null && trays[i].Count > 0 ? trayOpt : null, existing[i], linkTrays).Run();
+                    li == null && trays[i].Count > 0 ? trayOpt : null, existing[i]).Run();
             }
         }
         finally
@@ -136,7 +112,6 @@ static class SceneCollector
         scene.BoxMin = new[] { box.Min.X, box.Min.Y, box.Min.Z };
         scene.BoxMax = new[] { box.Max.X, box.Max.Y, box.Max.Z };
         scene.Seconds = ctx.Watch.Elapsed.TotalSeconds;
-        scene.LinkTrays = ctx.LinkTrays; scene.LinkTraysTotal = ctx.LinkTraysTotal; scene.LinkTraySeconds = ctx.LinkTraySeconds;
         scene.GeoSeconds = ctx.GeometrySeconds; scene.TriSeconds = ctx.TriSeconds + ctx.EdgeSeconds; scene.InfoSeconds = ctx.InfoSeconds;
         scene.Timing = L.T(
             $"Revit geometri {ctx.GeometrySeconds:0.00} sn · üçgenleme {ctx.TriSeconds:0.00} sn · kenar {ctx.EdgeSeconds:0.00} sn · sistem bilgisi {ctx.InfoSeconds:0.00} sn · toplam {scene.Seconds:0.00} sn",
@@ -171,81 +146,12 @@ static class SceneCollector
         return res;
     }
 
-    /// <summary>Bağlantı örneğinin geçici (yalnız tava görünür, Fine) görünümdeki geometrisini tava eksenlerine eşler:
-    /// bir katı, köşelerinin hepsi bir tavanın eksenine (yarı köşegen + pay) yakınsa o tavanındır. Bağlı model koordinatı.</summary>
-    static Dictionary<long, List<Solid>> LinkTraySolids(RevitLinkInstance li, Options opt, List<Element> trays)
-    {
-        const double Tol = 0.08; // ≈ 25 mm
-        var info = new List<(long id, Curve curve, double r)>();
-        double x0 = double.MaxValue, y0 = double.MaxValue, z0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue, z1 = double.MinValue;
-        foreach (var t in trays)
-        {
-            if (t.Location is not LocationCurve lc || lc.Curve == null || t.get_BoundingBox(null) is not { } bb) continue;
-            double w = t.get_Parameter(BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM)?.AsDouble() ?? 0;
-            double h = t.get_Parameter(BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM)?.AsDouble() ?? 0;
-            if (w <= 0 || h <= 0) continue;
-            double r = Math.Sqrt(w * w + h * h) / 2 + Tol;
-            info.Add((t.Id.Value, lc.Curve, r));
-            x0 = Math.Min(x0, bb.Min.X - r); y0 = Math.Min(y0, bb.Min.Y - r); z0 = Math.Min(z0, bb.Min.Z - r);
-            x1 = Math.Max(x1, bb.Max.X + r); y1 = Math.Max(y1, bb.Max.Y + r); z1 = Math.Max(z1, bb.Max.Z + r);
-        }
-        var res = new Dictionary<long, List<Solid>>();
-        if (info.Count == 0) return res;
-
-        void Take(Solid s)
-        {
-            BoundingBoxXYZ sb;
-            try { sb = s.GetBoundingBox(); } catch { return; }
-            if (sb == null) return;
-            var corners = new List<XYZ>(8);
-            foreach (var p in BoxResolver.Corners(sb.Min, sb.Max)) corners.Add(sb.Transform.OfPoint(p));
-            foreach (var p in corners)
-                if (p.X < x0 || p.Y < y0 || p.Z < z0 || p.X > x1 || p.Y > y1 || p.Z > z1) return;
-            long best = -1; double bestD = double.MaxValue;
-            foreach (var (id, curve, r) in info)
-            {
-                double worst = 0;
-                foreach (var p in corners)
-                {
-                    double dd = curve.Project(p)?.Distance ?? double.MaxValue;
-                    if (dd > worst) worst = dd;
-                    if (worst > r) break;
-                }
-                if (worst <= r && worst < bestD) { bestD = worst; best = id; }
-            }
-            if (best < 0) return;
-            if (!res.TryGetValue(best, out var list)) res[best] = list = new List<Solid>();
-            list.Add(s);
-        }
-
-        void Walk(GeometryElement g, Transform? tf, int depth)
-        {
-            foreach (GeometryObject o in g)
-            {
-                if (o is Solid s && s.Faces.Size > 0) Take(tf == null ? s : SolidUtils.CreateTransformed(s, tf));
-                else if (o is GeometryInstance gi && depth < 4)
-                {
-                    // Üst düzey: bağlantının kendisi → sembol geometrisi bağlı model koordinatında (DocPass da onu kullanır).
-                    var sub = gi.GetSymbolGeometry();
-                    var t2 = depth == 0 ? null : (tf ?? Transform.Identity).Multiply(gi.Transform);
-                    if (sub != null) Walk(sub, t2, depth + 1);
-                }
-            }
-        }
-
-        var ge = li.get_Geometry(opt);
-        if (ge != null) Walk(ge, null, 0);
-        return res;
-    }
-
     internal sealed class Ctx
     {
         public readonly SceneData Scene;
         public readonly XYZ Min, Max;
         public readonly Stopwatch Watch = Stopwatch.StartNew();
         public double GeometrySeconds, TriSeconds, EdgeSeconds, InfoSeconds;
-        public double LinkTraySeconds;
-        public int LinkTrays, LinkTraysTotal;   // bağlı modelden Fine okunan / kutudaki bağlı tava sayısı
         public static double Since(long t0) => (Stopwatch.GetTimestamp() - t0) / (double)Stopwatch.Frequency;
         public Ctx(SceneData scene, XYZ min, XYZ max) { Scene = scene; Min = min; Max = max; }
     }
@@ -321,9 +227,9 @@ sealed class DocPass
     readonly string? _linkName;
     readonly byte _docIdx;
     readonly Options? _trayOpt;   // kablo tavaları için geçici Fine görünümlü seçenekler (yalnız ana model)
-    readonly Dictionary<long, List<Solid>>? _linkTrays;   // bağlı model: tava no → Fine katılar (SceneCollector.LinkTraySolids)
     readonly Dictionary<long, uint>? _existing;            // kutu büyütme: zaten sahnede olanlar (Revit no → sahne no)
     readonly Options _opt = new() { DetailLevel = ViewDetailLevel.Fine, ComputeReferences = false, IncludeNonVisibleObjects = false };
+    readonly Options _coarse = new() { DetailLevel = ViewDetailLevel.Coarse, ComputeReferences = false, IncludeNonVisibleObjects = false };
     readonly Dictionary<long, bool> _glass = new();
     readonly Dictionary<long, bool> _skipStyle = new();
     readonly Dictionary<long, (SysColor, int)> _sysTypeInfo = new();
@@ -336,10 +242,10 @@ sealed class DocPass
     bool _emitted;
 
     public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName, byte docIdx, Options? trayOpt,
-        Dictionary<long, uint>? existing = null, Dictionary<long, List<Solid>>? linkTrays = null)
+        Dictionary<long, uint>? existing = null)
     {
         _c = c; _doc = doc; _toLocal = docToLocal; _toDoc = docToLocal.Inverse; _viewId = viewId; _linkName = linkName;
-        _docIdx = docIdx; _trayOpt = trayOpt; _existing = existing; _linkTrays = linkTrays;
+        _docIdx = docIdx; _trayOpt = trayOpt; _existing = existing;
         if (existing != null) foreach (var kv in existing) _sceneId[kv.Key] = kv.Value;   // yeni elemanların bağlantıları eskilere de çözülsün
         _x0 = c.Min.X; _y0 = c.Min.Y; _z0 = c.Min.Z; _x1 = c.Max.X; _y1 = c.Max.Y; _z1 = c.Max.Z;
     }
@@ -366,16 +272,15 @@ sealed class DocPass
             var bic = cat.BuiltInCategory;
             if (Excluded.Contains(bic)) continue;
             if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
-            GeometryElement? ge = null;
-            List<Solid>? fine = null;   // bağlı tava: bağlantının Fine görünümünden eşlenmiş katılar
-            if (_linkTrays != null && bic == BuiltInCategory.OST_CableTray) _linkTrays.TryGetValue(e.Id.Value, out fine);
-            if (fine == null)
-            {
-                long tg = Stopwatch.GetTimestamp();
-                try { ge = e.get_Geometry(_trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt : _opt); } catch { continue; }
-                finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
-                if (ge == null) continue;
-            }
+            GeometryElement? ge;
+            long tg = Stopwatch.GetTimestamp();
+            // Bağlı modelde düz tavalar Fine okunamıyor (kutu gelir) → fittingleri de Coarse: hat baştan sona aynı görünsün
+            // (kullanıcı isteği 2026-10-08, "hiç olmazsa bütünlük").
+            var opt = _trayOpt != null && bic == BuiltInCategory.OST_CableTray ? _trayOpt
+                : _linkName != null && bic == BuiltInCategory.OST_CableTrayFitting ? _coarse : _opt;
+            try { ge = e.get_Geometry(opt); } catch { continue; }
+            finally { _c.GeometrySeconds += SceneCollector.Ctx.Since(tg); }
+            if (ge == null) continue;
             _tone = Horizontal.Contains(bic) ? Tone.Horizontal
                 : Structure.Contains(bic) ? Tone.Structure
                 : PipeCats.Contains(bic) || DuctCats.Contains(bic) || ContainmentCats.Contains(bic)
@@ -383,8 +288,7 @@ sealed class DocPass
                 : Tone.General;
             _emitted = false;
             _id = (uint)scene.Labels.Count + 1;
-            if (fine != null) foreach (var s in fine) AddSolid(s);
-            else Walk(ge!, 0);
+            Walk(ge, 0);
             if (!_emitted) continue;
 
             long ti = Stopwatch.GetTimestamp();
