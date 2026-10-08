@@ -145,6 +145,11 @@ static class GlbWriter
             };
             if (e < s.ElemRevitId.Count) extras["revitId"] = s.ElemRevitId[e];
             if (e < s.ElemUid.Count) extras["uniqueId"] = s.ElemUid[e];
+            // Web'de çakışma (kullanıcı isteği 2026-10-08): grup (aynı gruptakiler çakışmaz) ve taşıyıcı (izolasyon → borusu;
+            // aynı taşıyıcıya bağlı parçalar çakışmaz).
+            if (e < s.ElemGroup.Count) extras["group"] = s.ElemGroup[e];
+            if (e < s.ElemCanon.Count && s.ElemCanon[e] != e + 1 && s.ElemCanon[e] - 1 < s.ElemRevitId.Count)
+                extras["hostId"] = s.ElemRevitId[(int)s.ElemCanon[e] - 1];
             nodes.Add(new { name = s.Labels[e], mesh = meshes.Count - 1, extras });
             children.Add(nodes.Count - 1);
         }
