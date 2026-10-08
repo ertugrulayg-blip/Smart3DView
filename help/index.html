@@ -115,7 +115,8 @@
     <li><b>Just this view</b>: <b>🌐 Export to web</b> in the 3D window saves what is open in that window (models hidden in the list at the top left are left out).</li>
   </ul>
   <p>When the export finishes, the model opens in your browser by itself (the add-in hands the file to the page from this computer — it is never uploaded). The first time, the browser asks whether the site may access devices on your local network: click <b>Allow</b>.</p>
-  <p>Files are saved to <code>DocumentsSmart3DView</code> by default. In the viewer, drag the file onto the page, or pick that folder once with <b>My models folder</b>.</p>
+  <p>Files are saved to <code>Documents\Smart3DView</code> by default. In the viewer, drag the file onto the page, or pick that folder once with <b>My models folder</b>.</p>
+  <p><b>If the browser view stutters</b>, look at the right of its bottom bar: it shows which graphics card the browser uses. <i>Microsoft Basic Render Driver</i> or <i>SwiftShader</i> means graphics acceleration is off in the browser (turn on “Use graphics acceleration when available”; on company computers this is often locked in Edge only, so the add-in then opens the model in Chrome if it is installed). <i>Intel UHD / Iris</i> on a laptop with an NVIDIA / AMD card means the browser runs on the built-in chip: Windows Settings → System → Display → Graphics → the browser → High performance, then reopen the browser. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Step-by-step setup</a></p>
 
   <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
   <ul>
@@ -249,7 +250,8 @@
     <li><b>Yalnız bu görünüm</b>: 3B penceredeki <b>🌐 Web'e aktar</b>, o pencerede açık olanı kaydeder (sol üstteki listede gizlenen modeller dahil edilmez).</li>
   </ul>
   <p>Aktarım bitince model tarayıcıda kendiliğinden açılır (eklenti dosyayı sayfaya bu bilgisayardan verir — hiçbir yere yüklenmez). İlk seferde tarayıcı, sitenin yerel ağdaki cihazlara erişmesine izin verilip verilmeyeceğini sorar: <b>İzin ver</b>'e tıklayın.</p>
-  <p>Dosyalar varsayılan olarak <code>BelgelerSmart3DView</code> klasörüne kaydedilir. Görüntüleyicide dosyayı sayfaya sürükleyin ya da bu klasörü <b>Modellerim klasörü</b> ile bir kez seçin.</p>
+  <p>Dosyalar varsayılan olarak <code>Belgeler\Smart3DView</code> klasörüne kaydedilir. Görüntüleyicide dosyayı sayfaya sürükleyin ya da bu klasörü <b>Modellerim klasörü</b> ile bir kez seçin.</p>
+  <p><b>Tarayıcıdaki görüntü kasıyorsa</b> alt çubuğun sağına bakın: tarayıcının hangi ekran kartını kullandığı yazar. <i>Microsoft Basic Render Driver</i> ya da <i>SwiftShader</i> → tarayıcıda grafik hızlandırma kapalı (“Kullanılabilir olduğunda grafik hızlandırmayı kullan”ı açın; şirket bilgisayarlarında bu çoğu zaman yalnız Edge'de kilitlidir, eklenti o zaman modeli yüklüyse Chrome'da açar). Dizüstünde NVIDIA / AMD kart varken <i>Intel UHD / Iris</i> → tarayıcı dahili kartta çalışıyor: Windows Ayarlar → Sistem → Ekran → Grafikler → tarayıcı → Yüksek performans, sonra tarayıcıyı yeniden açın. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Adım adım ayar</a></p>
 
   <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>
   <ul>
