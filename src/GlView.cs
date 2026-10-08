@@ -48,6 +48,13 @@ sealed unsafe partial class GlView : HwndHost
     };
     static readonly float[] ModelColors = Rgb(ModelRgb);
 
+    /// <summary>"Detaylı" ton rengi (0–1), dışa aktarımda malzeme rengi olarak.</summary>
+    internal static (float r, float g, float b) DetailRgb(int i)
+    {
+        i = Math.Clamp(i, 0, Detail.Count - 1);
+        return (DetailColors[3 * i], DetailColors[3 * i + 1], DetailColors[3 * i + 2]);
+    }
+
     static float[] Rgb(params int[] c)
     {
         var a = new float[c.Length * 3];
