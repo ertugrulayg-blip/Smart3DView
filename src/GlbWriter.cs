@@ -15,7 +15,9 @@ static class GlbWriter
     const float Ft = 0.3048f;
 
     /// <param name="include">Verilirse yalnız true dönen elemanlar yazılır (ör. pencerede gizlenen modeller atlanır).</param>
-    public static void Write(SceneData s, string path, Func<int, bool>? include = null)
+    /// <param name="boxMin">Pencerenin kesit kutusu (sahne koordinatı, ft); verilirse kök düğümün extras.sectionBox'ına
+    /// glTF koordinatında yazılır → web görüntüleyici aynı yerden keser (kullanıcı isteği 2026-10-08).</param>
+    public static void Write(SceneData s, string path, Func<int, bool>? include = null, double[]? boxMin = null, double[]? boxMax = null)
     {
         int n = s.Labels.Count;
         // Eleman başına üçgen listeleri (opak / cam ayrı ilkel).
@@ -146,7 +148,14 @@ static class GlbWriter
             nodes.Add(new { name = s.Labels[e], mesh = meshes.Count - 1, extras });
             children.Add(nodes.Count - 1);
         }
-        nodes.Add(new { name = s.Source, children, extras = new { models = s.DocNames } });
+        var rootExtras = new Dictionary<string, object> { ["models"] = s.DocNames };
+        if (boxMin != null && boxMax != null)
+            rootExtras["sectionBox"] = new
+            {
+                min = new[] { (float)boxMin[0] * Ft, (float)boxMin[2] * Ft, -(float)boxMax[1] * Ft },
+                max = new[] { (float)boxMax[0] * Ft, (float)boxMax[2] * Ft, -(float)boxMin[1] * Ft },
+            };
+        nodes.Add(new { name = s.Source, children, extras = rootExtras });
         int root = nodes.Count - 1;
         Align();
 

@@ -456,7 +456,7 @@ sealed partial class ViewerWindow : Window
         int count = 0;
         for (int e = 0; e < s.ElementCount; e++) if (Include(e)) count++;
         Flash(L.T("Dosya yazılıyor…", "Writing the file…"));
-        try { await WebExport.Write(s, path, Include); }
+        try { await WebExport.Write(s, path, Include, _view.BoxMin, _view.BoxMax); }   // kesit kutusu da gider
         catch (Exception ex) { Flash(L.T("Dosya yazılamadı: ", "Could not write the file: ") + ex.Message); return; }
         Flash(L.T("Web'e aktarıldı: ", "Exported to web: ") + Path.GetFileName(path));
         WebExport.ShowSaved(this, IntPtr.Zero, path, count);

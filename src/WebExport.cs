@@ -99,8 +99,8 @@ static class WebExport
     }
 
     /// <summary>Dosyayı arka planda yazar (büyük modelde birkaç saniye sürebilir; pencere donmaz).</summary>
-    public static Task Write(SceneData s, string path, Func<int, bool>? include = null) =>
-        Task.Run(() => GlbWriter.Write(s, path, include));
+    public static Task Write(SceneData s, string path, Func<int, bool>? include = null, double[]? boxMin = null, double[]? boxMax = null) =>
+        Task.Run(() => GlbWriter.Write(s, path, include, boxMin, boxMax));
 
     /// <summary>Kaydedildi: dosya yolu, boyut; görüntüleyiciyi tarayıcıda aç / klasörü aç.</summary>
     public static void ShowSaved(Window? owner, IntPtr ownerHwnd, string path, int elements)
