@@ -16,7 +16,8 @@ static class ClashGroup
     public const int None = 0,
         PipeCooling = 1, PipeHeating = 2, PipeFire = 3, PipeDomestic = 4, PipeDrainage = 5, PipeOther = 6,
         DuctSupply = 10, DuctReturn = 11, DuctOther = 12,
-        Containment = 20, Electrical = 21, MechEquipment = 30, Structure = 40;
+        Containment = 20, Electrical = 21, MechEquipment = 30, Structure = 40,
+        Architecture = 50;   // duvar, döşeme, çatı, tavan, merdiven (2026-10-09) — web görüntüleyicideki ARCH_GROUP ile aynı
 }
 
 /// <summary>"Detaylı renkli" tonda eleman rengi (gölgelendiricideki uDetail dizisinin indeksi, en çok 63).

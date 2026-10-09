@@ -400,6 +400,15 @@ sealed partial class ViewerWindow : Window
         await RunClash();
     }
 
+    // Kullanıcı 2026-10-09: çakışma açılınca ayrıntılı gruplandırma / rapor için Web'e aktar önerilsin. Mağaza paketinde
+    // Web'e aktar yok (STORE) → ipucu da yok.
+#if STORE
+    const string WebClashHint = "";
+#else
+    static string WebClashHint => L.T(" Ayrıntılı çakışma gruplandırması ve raporu için 🌐 Web'e aktar'ı kullanın.",
+                                      " For detailed clash grouping and a report, use 🌐 Export to web.");
+#endif
+
     async Task RunClash()
     {
         var scene = _scene;
@@ -415,7 +424,7 @@ sealed partial class ViewerWindow : Window
         Flash(r.PairCount == 0
             ? L.T($"Çakışma yok ({r.Seconds:0.0} sn).", $"No clashes ({r.Seconds:0.0} s).")
             : L.T($"{r.Elements.Count} çakışan eleman, {r.PairCount} çakışma ({r.Seconds:0.0} sn). Kırmızı ve mavi = çakışmanın iki tarafı. Bir elemana tıkla: kendisi kırmızı, çakıştıkları mavi olur.",
-                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Red and blue = the two sides of a clash. Click an element: it turns red, the elements it clashes with turn blue."));
+                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Red and blue = the two sides of a clash. Click an element: it turns red, the elements it clashes with turn blue.") + WebClashHint);
     }
 
     void TakePicture()
@@ -628,7 +637,7 @@ sealed partial class ViewerWindow : Window
             : L.T("🔒 Ücretsiz sürüm · Lisans al", "🔒 Free version · Get license");
         _btnLic.Visibility = st == LicenseState.Licensed ? Visibility.Collapsed : Visibility.Visible;
         _btnReload.Visibility = _host != null ? Visibility.Visible : Visibility.Collapsed;
-        ((TextBlock)_btnTol.Child).Text = TolText;
+        ((TextBlock)_btnTol.Child).Text = L.T("Tolerans: ", "Tolerance: ") + TolText;   // kullanıcı 2026-10-09: "toleransın yanına tolerans: yaz"
         ((TextBlock)_btnReload.Child).Text = "⟳  " + L.T("Yenile", "Reload") + (_stale ? " •" : "");
         foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnWeb, false), (_btnShot, false), (_btnHelp, false) })
         {

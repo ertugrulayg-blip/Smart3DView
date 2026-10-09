@@ -338,6 +338,14 @@ sealed class DocPass
         BuiltInCategory.OST_MechanicalEquipment, BuiltInCategory.OST_PlumbingFixtures,
     };
 
+    // Mimari çakışma grubu (kullanıcı 2026-10-09: "duvar döşemeleri de kat", "merdiven çatıyı da kat", "tavanı da kat").
+    // Kendi aralarında denetlenmez (aynı grup); tesisat ve taşıyıcıyla denetlenir.
+    static readonly HashSet<BuiltInCategory> ArchCats = new()
+    {
+        BuiltInCategory.OST_Walls, BuiltInCategory.OST_Floors, BuiltInCategory.OST_Roofs, BuiltInCategory.OST_Ceilings,
+        BuiltInCategory.OST_Stairs, BuiltInCategory.OST_StairsRuns, BuiltInCategory.OST_StairsLandings,
+    };
+
     readonly SceneCollector.Ctx _c;
     readonly Document _doc;
     readonly Transform _toLocal, _toDoc;
@@ -485,6 +493,7 @@ sealed class DocPass
         else if (ElectricalCats.Contains(bic)) group = ClashGroup.Electrical;
         else if (MechEquipCats.Contains(bic)) group = ClashGroup.MechEquipment;
         else if (bic is BuiltInCategory.OST_StructuralFraming or BuiltInCategory.OST_StructuralColumns) group = ClashGroup.Structure;
+        else if (ArchCats.Contains(bic)) group = ClashGroup.Architecture;
         else group = ClashGroup.None;
         return (group, DetailOf(bic, color, group), host);
     }
@@ -567,6 +576,7 @@ sealed class DocPass
         if (MechEquipCats.Contains(bic)) return (SysColor.None, ClashGroup.MechEquipment, host);
         if (bic is BuiltInCategory.OST_StructuralFraming or BuiltInCategory.OST_StructuralColumns)
             return (SysColor.None, ClashGroup.Structure, host);
+        if (ArchCats.Contains(bic)) return (SysColor.None, ClashGroup.Architecture, host);
         return (SysColor.None, ClashGroup.None, host);
     }
 
