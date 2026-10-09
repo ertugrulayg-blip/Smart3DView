@@ -29,6 +29,34 @@ sealed partial class ViewerWindow
             _view.SetHiddenModels(_hidden);
             if (_clashOn) _ = RunClash();   // gizlenen modeller çakışmaya girmez
         };
+        _view.HiddenChanged += () =>
+        {
+            int n = _view.HiddenElementCount;
+            Flash(n == 0 ? L.T("Gizlenen elemanlar gösterildi.", "Hidden elements are shown again.")
+                         : L.T($"{n} eleman gizli — sağ tık → Tümünü göster (Shift+H).", $"{n} element(s) hidden — right-click → Show all (Shift+H)."));
+            if (_clashOn) _ = RunClash();   // gizlenen elemanlar çakışmaya girmez
+        };
+        _view.ContextRequested += ShowElementMenu;
+    }
+
+    /// <summary>Sağ tık menüsü (kullanıcı isteği 2026-10-09: "objeyi sağ tık hide seçeneği olsun"). p = GL istemci pikseli.</summary>
+    void ShowElementMenu(uint id, System.Windows.Point p)
+    {
+        var menu = new ContextMenu();
+        var hide = new MenuItem { Header = L.T("Gizle", "Hide"), InputGestureText = "H", IsEnabled = id != 0 };
+        hide.Click += (_, _) => _view.HideElement(id);
+        int n = _view.HiddenElementCount;
+        var show = new MenuItem { Header = L.T($"Tümünü göster ({n})", $"Show all ({n})"), InputGestureText = "Shift+H", IsEnabled = n > 0 };
+        show.Click += (_, _) => _view.ShowAllElements();
+        menu.Items.Add(hide);
+        menu.Items.Add(show);
+        var dpi = VisualTreeHelper.GetDpi(_view);
+        menu.PlacementTarget = _view;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;
+        menu.HorizontalOffset = p.X / dpi.DpiScaleX;
+        menu.VerticalOffset = p.Y / dpi.DpiScaleY;
+        menu.Closed += (_, _) => _view.FocusGl();
+        menu.IsOpen = true;
     }
 
     void ToggleTag()

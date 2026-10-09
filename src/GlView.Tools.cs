@@ -55,7 +55,9 @@ sealed unsafe partial class GlView
 
     public bool IsHidden(uint id)
     {
-        if (_scene == null || _hiddenModels.Count == 0 || id == 0 || id > _scene.ElemDoc.Count) return false;
+        if (_scene == null || id == 0 || id > _scene.ElemDoc.Count) return false;
+        if (_hiddenElems.Count > 0 && _hiddenElems.Contains(Canon(id))) return true;
+        if (_hiddenModels.Count == 0) return false;
         int d = _scene.ElemDoc[(int)id - 1];
         return d < _scene.DocNames.Count && _hiddenModels.Contains(_scene.DocNames[d]);
     }
@@ -63,10 +65,46 @@ sealed unsafe partial class GlView
     /// <summary>Çakışma denetimi için gizli eleman maskesi (indeks = id).</summary>
     public bool[]? HiddenMask()
     {
-        if (_scene == null || _hiddenModels.Count == 0) return null;
+        if (_scene == null || (_hiddenModels.Count == 0 && _hiddenElems.Count == 0)) return null;
         var m = new bool[_scene.Labels.Count + 1];
         for (uint id = 1; id < m.Length; id++) m[id] = IsHidden(id);
         return m;
+    }
+
+    // ---- tek eleman gizle (sağ tık menüsü / H, kullanıcı isteği 2026-10-09) ----------------------------------------------
+    // Kanonik id saklanır: boru gizlenince kendi izolasyonu da gizlenir. Yeniden okumada (SetScene) id'ler değiştiği için temizlenir.
+
+    readonly HashSet<uint> _hiddenElems = new();
+
+    /// <summary>Sağ tık (sürüklemeden): imlecin altındaki eleman (0 = boşluk) ve istemci piksel konumu.</summary>
+    public event Action<uint, Point>? ContextRequested;
+    /// <summary>Tek tek gizlenen elemanlar değişti (çakışma yeniden hesaplansın).</summary>
+    public event Action? HiddenChanged;
+
+    public int HiddenElementCount => _hiddenElems.Count;
+
+    uint Canon(uint id) => _scene != null && id > 0 && id <= _scene.ElemCanon.Count ? _scene.ElemCanon[(int)id - 1] : id;
+
+    public void HideElement(uint id)
+    {
+        if (_scene == null || id == 0 || !_hiddenElems.Add(Canon(id))) return;
+        RefreshHidden();
+    }
+
+    public void ShowAllElements()
+    {
+        if (_hiddenElems.Count == 0) return;
+        _hiddenElems.Clear();
+        RefreshHidden();
+    }
+
+    void RefreshHidden()
+    {
+        ApplyHiddenBits();
+        if (Selected > 0 && IsHidden(Selected)) Select(0);
+        UploadState();
+        Invalidate();
+        HiddenChanged?.Invoke();
     }
 
     string? ModelHit(Point p)

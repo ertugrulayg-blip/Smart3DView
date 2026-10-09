@@ -13,7 +13,7 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RevitDir Condition="'$(RevitDir)' == ''">C:\Program Files\Autodesk\Revit 2026</RevitDir>
     <!-- Her güncellemede artırılır; pencere başlığında ve düğme ipucunda görünür. -->
-    <Version>1.17.0</Version>
+    <Version>1.18.1</Version>
     <!-- Autodesk mağaza paketi (make-bundle.ps1, -p:Store=true): "Web'e aktar" yok — mağaza açıklamasında yer almıyor. -->
     <DefineConstants Condition="'$(Store)' == 'true'">$(DefineConstants);STORE</DefineConstants>
   </PropertyGroup>

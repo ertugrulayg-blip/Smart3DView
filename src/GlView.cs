@@ -132,6 +132,7 @@ sealed unsafe partial class GlView : HwndHost
     // fare
     bool _leftDown, _nav, _fitPending;
     Point _down, _last;
+    Point _rDown;   // sağ tuşun basıldığı yer — sürüklenmeden bırakılırsa bağlam menüsü
     Point3D _pivot;
     double _panDepth;
     // Sürükleme/tekerlek sırasında hafif kalite (MSAA yok, 1 px çizgi); hareket durunca tam kaliteli tek kare.
@@ -160,6 +161,7 @@ sealed unsafe partial class GlView : HwndHost
         _scene = scene;
         _uploaded = false;
         Selected = 0;
+        _hiddenElems.Clear();   // id'ler yeni sahnede değişir
         _clashMode = false;
         Array.Copy(scene.BoxMin, _cMin, 3);
         Array.Copy(scene.BoxMax, _cMax, 3);
@@ -1420,12 +1422,20 @@ void main(){
             case Win32.WM_MBUTTONDBLCLK:
             case Win32.WM_RBUTTONDOWN:
                 Win32.SetFocus(hwnd);
+                if (msg == Win32.WM_RBUTTONDOWN) _rDown = Pt(); else _rDown = new Point(-1e9, -1e9);
                 BeginNav(Pt());
                 handled = true;
                 return IntPtr.Zero;
             case Win32.WM_MBUTTONUP:
             case Win32.WM_RBUTTONUP:
                 if (_nav) { _nav = false; Win32.ReleaseCapture(); }
+                if (msg == Win32.WM_RBUTTONUP && (Pt() - _rDown).Length < 5 && !_measureMode)
+                {
+                    var rp = Pt();
+                    uint rid = ModelHit(rp) == null && CubeHit(rp) == null ? Pick(rp).id : 0;
+                    if (rid != 0) Select(rid);
+                    ContextRequested?.Invoke(rid, rp);
+                }
                 handled = true;
                 return IntPtr.Zero;
             case Win32.WM_CAPTURECHANGED:
@@ -1489,6 +1499,7 @@ void main(){
                 else if (vk >= 0x31 && vk < 0x31 + n) PaletteKey?.Invoke(vk - 0x31);
                 else if (vk >= 0x61 && vk < 0x61 + n) PaletteKey?.Invoke(vk - 0x61);
                 else if (vk == 'F') FitSelectionOrAll();
+                else if (vk == 'H') { if ((Win32.GetKeyState(Win32.VK_SHIFT) & 0x8000) != 0) ShowAllElements(); else if (Selected > 0) HideElement(Selected); }   // H gizle, Shift+H tümünü göster
                 else if (vk == Win32.VK_HOME) FitAll(IsoLook);
                 else if (vk == Win32.VK_ESCAPE) { if (EscapeOverride?.Invoke() != true) Select(0); }
                 else if (vk is 'C' or 'B' or 'M' or 'P' or 'R') ToolKey?.Invoke((char)vk);

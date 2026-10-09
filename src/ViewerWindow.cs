@@ -464,8 +464,8 @@ sealed partial class ViewerWindow : Window
         string? path = WebExport.AskPath(this, _docTitle + " - 3D");
         if (path == null) { _view.FocusGl(); return; }
         var s = _scene;
-        var hidden = new System.Collections.Generic.HashSet<string>(_hidden, StringComparer.CurrentCultureIgnoreCase);
-        bool Include(int e) => hidden.Count == 0 || !(e < s.ElemDoc.Count && s.ElemDoc[e] < s.DocNames.Count && hidden.Contains(s.DocNames[s.ElemDoc[e]]));
+        var mask = _view.HiddenMask();   // gizlenen modeller ve tek tek gizlenen elemanlar (indeks = id = e + 1)
+        bool Include(int e) => mask == null || e + 1 >= mask.Length || !mask[e + 1];
         int count = 0;
         for (int e = 0; e < s.ElementCount; e++) if (Include(e)) count++;
         Flash(L.T("Dosya yazılıyor…", "Writing the file…"));

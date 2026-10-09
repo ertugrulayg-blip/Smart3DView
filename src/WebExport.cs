@@ -35,7 +35,8 @@ static class WebExport
             Title = L.T("Web'e aktar — .glb dosyasını kaydet", "Export to web — save the .glb file"),
             Filter = L.T("3B model (*.glb)|*.glb", "3D model (*.glb)|*.glb"),
             DefaultExt = ".glb",
-            FileName = (name.Length > 0 ? name : "model") + ".glb",
+            // Sonuna tarih-saat (kullanıcı 2026-10-09: "dosyalar üst üste yazılıyor") — her aktarım ayrı dosya.
+            FileName = (name.Length > 0 ? name : "model") + $" {DateTime.Now:yyyy-MM-dd HHmmss}.glb",
             InitialDirectory = DefaultFolder,
             OverwritePrompt = true,
         };
