@@ -76,6 +76,9 @@ sealed partial class ViewerWindow : Window
     readonly StackPanel _tools = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     readonly StackPanel _swatches = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnWeb, _btnShot, _btnHelp;
+#if !STORE
+    Border _clashWebHint = null!;   // çakışma açıkken Web'e aktar düğmesinin üstünde (kullanıcı 2026-10-09)
+#endif
     // Çakışma toleransı (mm): yalnız birbirinin içine bundan derin giren elemanlar çakışır; 0 = dokunma da sayılır.
     static readonly int[] TolSteps = { 5, 10, 25, 50, 0 };
     int _clashTolMm = 5;
@@ -146,6 +149,14 @@ sealed partial class ViewerWindow : Window
         _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
         _flyouts.Add(MakeFlyout(_btnClash, () => _clashOn, _btnTol));
+#if !STORE
+        // Çakışma açık kaldıkça Web'e aktar düğmesinin üstünde kısa ipucu (tıklanınca aktarır). Tolerans şeridiyle
+        // çakışırsa RefreshFlyouts onu bir sıra yukarı alır → yazılar üst üste binmez.
+        _clashWebHint = MakeTool(L.T("Ayrıntılı çakışma raporu ↓", "Detailed clash report ↓"),
+            L.T("Çakışmaları gruplandırılmış olarak görmek ve rapor almak için Web'e aktar'ı kullanın.",
+                "Use Export to web to see the clashes grouped and get a report."), () => _ = ExportCurrent());
+        _flyouts.Add(MakeFlyout(_btnWeb, () => _clashOn, _clashWebHint));
+#endif
 
         var barGrid = new Grid();
         barGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -400,15 +411,6 @@ sealed partial class ViewerWindow : Window
         await RunClash();
     }
 
-    // Kullanıcı 2026-10-09: çakışma açılınca ayrıntılı gruplandırma / rapor için Web'e aktar önerilsin. Mağaza paketinde
-    // Web'e aktar yok (STORE) → ipucu da yok.
-#if STORE
-    const string WebClashHint = "";
-#else
-    static string WebClashHint => L.T(" Ayrıntılı çakışma gruplandırması ve raporu için 🌐 Web'e aktar'ı kullanın.",
-                                      " For detailed clash grouping and a report, use 🌐 Export to web.");
-#endif
-
     async Task RunClash()
     {
         var scene = _scene;
@@ -424,7 +426,7 @@ sealed partial class ViewerWindow : Window
         Flash(r.PairCount == 0
             ? L.T($"Çakışma yok ({r.Seconds:0.0} sn).", $"No clashes ({r.Seconds:0.0} s).")
             : L.T($"{r.Elements.Count} çakışan eleman, {r.PairCount} çakışma ({r.Seconds:0.0} sn). Kırmızı ve mavi = çakışmanın iki tarafı. Bir elemana tıkla: kendisi kırmızı, çakıştıkları mavi olur.",
-                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Red and blue = the two sides of a clash. Click an element: it turns red, the elements it clashes with turn blue.") + WebClashHint);
+                  $"{r.Elements.Count} clashing elements, {r.PairCount} clashes ({r.Seconds:0.0} s). Red and blue = the two sides of a clash. Click an element: it turns red, the elements it clashes with turn blue."));
     }
 
     void TakePicture()
@@ -645,6 +647,13 @@ sealed partial class ViewerWindow : Window
             b.Background = on ? new SolidColorBrush(Color.FromRgb(0x2B, 0x6C, 0xD8)) : new SolidColorBrush(Color.FromArgb(dark ? (byte)0x22 : (byte)0x10, ink.R, ink.G, ink.B));
             b.BorderBrush = new SolidColorBrush(on ? Color.FromRgb(0x2B, 0x6C, 0xD8) : Color.FromArgb(0x40, ink.R, ink.G, ink.B));
         }
+#if !STORE
+        var amber = dark ? Color.FromRgb(0xFF, 0xC8, 0x57) : Color.FromRgb(0xA8, 0x5A, 0x00);
+        ((TextBlock)_clashWebHint.Child).Foreground = new SolidColorBrush(amber);
+        ((TextBlock)_clashWebHint.Child).FontWeight = FontWeights.SemiBold;
+        _clashWebHint.Background = Brushes.Transparent;
+        _clashWebHint.BorderBrush = Brushes.Transparent;
+#endif
         if (_stale)   // model Revit'te değişti: turuncu uyarı
         {
             var orange = Color.FromRgb(0xE0, 0x7A, 0x10);
