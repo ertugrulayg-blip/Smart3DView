@@ -89,7 +89,7 @@ static class BoxResolver
                 if (view is ViewPlan vp && Math.Max(max.X - min.X, max.Y - min.Y) > AskAboveSide)
                 {
                     var (z0, z1) = PlanZRange(doc, vp);
-                    if (min.Z < z0 - Margin || max.Z > z1 + Margin)
+                    if (min.Z < z0 - LevelTol || max.Z > z1 + LevelTol)
                     {
                         if (!AskWholeSelection()) { min = new XYZ(min.X, min.Y, Math.Max(min.Z, z0)); max = new XYZ(max.X, max.Y, Math.Min(max.Z, z1)); }
                     }
@@ -129,6 +129,7 @@ static class BoxResolver
     }
 
     const double AskAboveSide = 6000 / 304.8; // ft — seçim alanının bir kenarı bundan uzunsa kat dışı sorulur
+    const double LevelTol = 50 / 304.8;       // ft — kat sınırından bu kadar taşan "taşmış" sayılmaz (kullanıcı: 5 cm)
 
     /// <summary>true: tamamını göster; false: yalnız bu kat (varsayılan, Esc de bu).</summary>
     static bool AskWholeSelection()
