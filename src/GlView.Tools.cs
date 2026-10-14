@@ -72,7 +72,7 @@ sealed unsafe partial class GlView
     }
 
     // ---- tek eleman gizle (sağ tık menüsü / H, kullanıcı isteği 2026-10-09) ----------------------------------------------
-    // Kanonik id saklanır: boru gizlenince kendi izolasyonu da gizlenir. Yeniden okumada (SetScene) id'ler değiştiği için temizlenir.
+    // Kanonik id saklanır: boru gizlenince kendi izolasyonu da gizlenir. Yeniden okumada (SetScene) Revit kimliğiyle yeni id'lere taşınır.
 
     readonly HashSet<uint> _hiddenElems = new();
 
@@ -84,6 +84,21 @@ sealed unsafe partial class GlView
     public int HiddenElementCount => _hiddenElems.Count;
 
     uint Canon(uint id) => _scene != null && id > 0 && id <= _scene.ElemCanon.Count ? _scene.ElemCanon[(int)id - 1] : id;
+
+    /// <summary>Elemanın sahneden bağımsız kimliği: (bağlantı örneği no ya da -1 ana model, Revit ElementId).</summary>
+    static (long, long) ElemKey(SceneData s, int i)
+    {
+        int d = i < s.ElemDoc.Count ? s.ElemDoc[i] : 0;
+        return (d < s.DocKeys.Count ? s.DocKeys[d] : -1, i < s.ElemRevitId.Count ? s.ElemRevitId[i] : -1);
+    }
+
+    HashSet<(long, long)> HiddenKeys(SceneData s)
+    {
+        var keys = new HashSet<(long, long)>();
+        foreach (var id in _hiddenElems)
+            if (id > 0 && id <= s.ElemRevitId.Count) keys.Add(ElemKey(s, (int)id - 1));
+        return keys;
+    }
 
     public void HideElement(uint id)
     {

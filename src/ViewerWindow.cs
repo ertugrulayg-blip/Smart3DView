@@ -96,6 +96,11 @@ sealed partial class ViewerWindow : Window
     string _timing = "";
     ClashResult? _clash;
     bool _clashOn, _busy, _stale;   // _stale: Revit modeli okunduktan sonra değişti → "Yenile" uyarır
+    // Otomatik yenileme (kullanıcı isteği 2026-10-14: "auto seçiliyse reload turuncu olduğu anda reload yapsın"): Revit'teki
+    // değişiklikten kısa süre sonra kendiliğinden yalnız değişenler okunur. Ayar kalıcı ("autoreload").
+    bool _autoReload;
+    readonly Border _btnAuto, _btnManual;
+    readonly DispatcherTimer _autoTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     readonly HashSet<long> _changed = new();   // pencere açıldıktan/son Yenile'den beri Revit'te eklenen/değişen/silinen eleman no'ları
 
     static string Hint => L.T(
@@ -113,7 +118,12 @@ sealed partial class ViewerWindow : Window
 
         _btnReload = MakeTool("⟳  " + L.T("Yenile", "Reload"),
             L.T("Revit'te yapılan değişiklikleri yansıt — yalnız değişen elemanlar ve yeniden yüklenen bağlı modeller okunur; kamera, kutu, ton, çakışma ve seçim korunur  (R / F5 · Shift: baştan oku)",
-                "Reflect the changes made in Revit — only changed elements and reloaded links are read; camera, box, tone, clash and selection are kept  (R / F5 · Shift: read everything)"), Reload);
+                "Reflect the changes made in Revit — only changed elements and reloaded links are read; camera, box, tone, clash and selection are kept  (R / F5 · Shift: read everything)"), () => Reload());
+        _btnAuto = MakeTool(L.T("Otomatik", "Auto"),
+            L.T("Revit'te bir şey değişince kendiliğinden yenile (yalnız değişenler okunur)", "Reload by itself as soon as something changes in Revit (only the changes are read)"), () => SetAutoReload(true));
+        _btnManual = MakeTool(L.T("Elle", "Manual"),
+            L.T("Yalnız Yenile'ye basınca yenile — değişince düğme turuncu olur", "Reload only when you press Reload — the button turns orange on changes"), () => SetAutoReload(false));
+        _autoTimer.Tick += (_, _) => { _autoTimer.Stop(); if (_autoReload && _stale) { if (_busy) _autoTimer.Start(); else Reload(full: false); } };
         _btnBox = MakeTool("▣  " + L.T("Kutu", "Box"),
             L.T("Kesit kutusunu düzenle: mavi tutamaçları sürükleyerek yüzleri içeri/dışarı al  (B)",
                 "Edit the section box: drag the blue handles to move faces in/out  (B)"), ToggleBox);
@@ -148,6 +158,7 @@ sealed partial class ViewerWindow : Window
         foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnWeb, _btnShot, _btnHelp }) _tools.Children.Add(b);
 #endif
         // Alt düğmeler çubuğa eklenmez: ana düğmenin ÜSTÜNDE ayrı bir şerit olarak açılır (kullanıcı isteği 2026-10-08).
+        _flyouts.Add(MakeFlyout(_btnReload, () => _host != null, _btnAuto, _btnManual));   // hep açık: otomatik / elle
         _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
         _flyouts.Add(MakeFlyout(_btnClash, () => _clashOn, _btnTol));
@@ -216,6 +227,7 @@ sealed partial class ViewerWindow : Window
         {
             if (_host == null || _scene?.Context == null || !_host.IsFromDoc(_scene.Context, doc)) return;
             _changed.UnionWith(ids);   // Yenile yalnız bunları okur
+            if (_autoReload) { _autoTimer.Stop(); _autoTimer.Start(); }   // art arda gelen değişiklikler tek yenilemede toplanır
             if (_stale) return;
             _stale = true;
             RefreshTools();
@@ -367,11 +379,12 @@ sealed partial class ViewerWindow : Window
     /// R / F5: yalnız değişenler — ana modelde eklenen/değişen/silinen elemanlar, bağlı modellerde yalnız yeniden
     /// yüklenen/kaldırılan/taşınan/eklenen bağlantılar okunur (kullanıcı isteği 2026-10-14).
     /// Shift+R / Shift+F5 / Shift+tık: görünen kutu baştan okunur (görünüm gizleme ayarları vb. için).</summary>
-    void Reload()
+    void Reload(bool? full = null)
     {
         if (_busy) return;
+        _autoTimer.Stop();
         if (_host == null || _scene?.Context == null) { Flash(L.T("Revit bağlantısı yok; yenilenemez.", "No Revit link; cannot reload.")); return; }
-        bool full = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+        bool all = full ?? (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
         string? selKey = _view.SelectedKey;
         _busy = true;
         var snapshot = new List<long>(_changed);
@@ -381,15 +394,16 @@ sealed partial class ViewerWindow : Window
             _busy = false;
             _read = null;
             if (scene == null) { _changed.UnionWith(snapshot); Flash(err ?? "?"); return; }
-            if (full) _changed.Clear();
+            if (all) _changed.Clear();
             _stale = _changed.Count > 0;
             Load(scene, _docTitle, keepView: true);
             _view.SelectByKey(selKey);
             RefreshTools();
+            if (_autoReload && _stale) _autoTimer.Start();   // okuma sürerken yeni değişiklik geldi
             Flash(L.T("Revit'teki değişiklikler yansıtıldı — ", "Changes from Revit applied — ")
                 + (scene.RefreshNote.Length > 0 ? scene.RefreshNote + " · " : "") + Breakdown(scene));
         });
-        if (full)
+        if (all)
         {
             // Yalnız görünen kutu (hızlı); dışına çıkılınca kutu büyütme yeni elemanları ekler.
             Flash(L.T("Revit'ten baştan okunuyor…  ·  Esc: iptal", "Reloading everything from Revit…  ·  Esc: cancel"));
@@ -405,6 +419,15 @@ sealed partial class ViewerWindow : Window
         }
         Flash(L.T("Revit'teki değişiklikler okunuyor…  ·  Esc: iptal", "Reading the changes from Revit…  ·  Esc: cancel"));
         _host.Refresh(_scene.Context, _scene, snapshot, lo, hi, done, NewRead(L.T("Değişiklikler okunuyor", "Reading the changes"), confirm: false));
+    }
+
+    void SetAutoReload(bool on)
+    {
+        _autoReload = on;
+        SaveSettings();
+        RefreshTools();
+        if (on && _stale) Reload(full: false);   // bekleyen değişiklik varsa hemen
+        _view.FocusGl();
     }
 
     void CycleTol()
@@ -665,7 +688,7 @@ sealed partial class ViewerWindow : Window
         _btnReload.Visibility = _host != null ? Visibility.Visible : Visibility.Collapsed;
         ((TextBlock)_btnTol.Child).Text = L.T("Tolerans: ", "Tolerance: ") + TolText;   // kullanıcı 2026-10-09: "toleransın yanına tolerans: yaz"
         ((TextBlock)_btnReload.Child).Text = "⟳  " + L.T("Yenile", "Reload") + (_stale ? " •" : "");
-        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnWeb, false), (_btnShot, false), (_btnHelp, false) })
+        foreach (var (b, on) in new[] { (_btnLic, false), (_btnReload, false), (_btnAuto, _autoReload), (_btnManual, !_autoReload), (_btnBox, _view.BoxMode), (_btnMove, _view.MoveMode), (_btnReset, false), (_btnMeasure, _view.MeasureMode), (_btnLockX, _view.LockAxis == 0), (_btnLockY, _view.LockAxis == 1), (_btnLockZ, _view.LockAxis == 2), (_btnFree, _view.LockAxis < 0), (_btnClear, false), (_btnClash, _clashOn), (_btnTol, false), (_btnWeb, false), (_btnShot, false), (_btnHelp, false) })
         {
             ((TextBlock)b.Child).Foreground = new SolidColorBrush(on ? Colors.White : ink);
             b.Background = on ? new SolidColorBrush(Color.FromRgb(0x2B, 0x6C, 0xD8)) : new SolidColorBrush(Color.FromArgb(dark ? (byte)0x22 : (byte)0x10, ink.R, ink.G, ink.B));
@@ -817,6 +840,7 @@ sealed partial class ViewerWindow : Window
                 _palIndex = Math.Clamp(pv == "2" && pi >= 4 ? Math.Max(3, pi - 1) : pi, 0, Palette.All.Length - 1);
             if (kv.TryGetValue("clashtol", out var ct) && int.TryParse(ct, out var cti) && Array.IndexOf(TolSteps, cti) >= 0) _clashTolMm = cti;
             if (kv.TryGetValue("tag", out var tg)) _tagOn = tg == "1";
+            if (kv.TryGetValue("autoreload", out var ar)) _autoReload = ar == "1";
             double l = D("left"), t = D("top"), w = D("width"), h = D("height");
             if (!double.IsNaN(w) && !double.IsNaN(h) && w > 200 && h > 150) { Width = w; Height = h; }
             var vs = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
@@ -842,6 +866,7 @@ sealed partial class ViewerWindow : Window
                 $"palette={_palIndex}", "pv=3",
                 $"clashtol={_clashTolMm}",
                 $"tag={(_tagOn ? 1 : 0)}",
+                $"autoreload={(_autoReload ? 1 : 0)}",
                 $"left={r.Left.ToString(ci)}", $"top={r.Top.ToString(ci)}",
                 $"width={r.Width.ToString(ci)}", $"height={r.Height.ToString(ci)}",
                 $"max={(WindowState == WindowState.Maximized ? 1 : 0)}",

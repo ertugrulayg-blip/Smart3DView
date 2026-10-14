@@ -148,9 +148,18 @@ static class ClashDetector
         }
         var ta = TrisIn(tris, start[a], start[a + 1], o0, o1);
         var tb = TrisIn(tris, start[b], start[b + 1], o0, o1);
+        // Toleranslı: her iki düzlemi de toleranstan derin geçen üçgen çiftlerinin kesişim uzunlukları toplanır; toplam
+        // toleranstan uzunsa çakışma (dar yüzlü ince boru bir tavayı delince tek yüz yetmiyordu, 2026-10-14).
+        double sum = 0;
         foreach (int i in ta)
             foreach (int j in tb)
-                if (TriTri(tris, i * 9, j * 9, tol)) return true;
+            {
+                double l = TriTri(tris, i * 9, j * 9, tol);
+                if (l <= 0) continue;
+                if (tol <= 0) return true;
+                sum += l;
+                if (sum > tol) return true;
+            }
 
         // Dokunmadan tamamen içinde kalma (ör. kanalın içinden geçen boru).
         if (Inside(min, max, a, b) && PointInMesh(tris, start[a] * 9, tris, start[b], start[b + 1])) return true;
@@ -212,8 +221,9 @@ static class ClashDetector
     // ---- üçgen–üçgen kesişimi (Möller 1997, düzleme uzaklıkta Tol toleransı) ------------------------------------
 
     /// <param name="pen">0: dokunma da kesişim sayılır. &gt; 0: üçgenler birbirinin düzlemini her iki yönde pen'den fazla
-    /// geçmeli ve kesişim aralıkları pen'den uzun örtüşmeli (eş düzlemli/değen yüzler sayılmaz).</param>
-    static bool TriTri(double[] t, int a, int b, double pen)
+    /// geçmeli (eş düzlemli/değen yüzler sayılmaz); dönüş = kesişim parçasının uzunluğu (çağıran eleman çifti boyunca toplar).</param>
+    /// <returns>0: kesişmiyor. pen = 0: 1. pen &gt; 0: kesişim uzunluğu (ft).</returns>
+    static double TriTri(double[] t, int a, int b, double pen)
     {
         double sn = pen > 0 ? pen : Tol;
         double a0x = t[a], a0y = t[a + 1], a0z = t[a + 2], a1x = t[a + 3], a1y = t[a + 4], a1z = t[a + 5], a2x = t[a + 6], a2y = t[a + 7], a2z = t[a + 8];
@@ -223,27 +233,27 @@ static class ClashDetector
         double e1x = a1x - a0x, e1y = a1y - a0y, e1z = a1z - a0z, e2x = a2x - a0x, e2y = a2y - a0y, e2z = a2z - a0z;
         double n1x = e1y * e2z - e1z * e2y, n1y = e1z * e2x - e1x * e2z, n1z = e1x * e2y - e1y * e2x;
         double l1 = Math.Sqrt(n1x * n1x + n1y * n1y + n1z * n1z);
-        if (l1 < 1e-14) return false;
+        if (l1 < 1e-14) return 0;
         double d1 = -(n1x * a0x + n1y * a0y + n1z * a0z);
         double du0 = Snap(n1x * b0x + n1y * b0y + n1z * b0z + d1, l1, sn);
         double du1 = Snap(n1x * b1x + n1y * b1y + n1z * b1z + d1, l1, sn);
         double du2 = Snap(n1x * b2x + n1y * b2y + n1z * b2z + d1, l1, sn);
         double du0du1 = du0 * du1, du0du2 = du0 * du2;
-        if (du0du1 > 0 && du0du2 > 0) return false;
-        if (pen > 0 && !((du0 > 0 || du1 > 0 || du2 > 0) && (du0 < 0 || du1 < 0 || du2 < 0))) return false;   // yalnız değiyor
+        if (du0du1 > 0 && du0du2 > 0) return 0;
+        if (pen > 0 && !((du0 > 0 || du1 > 0 || du2 > 0) && (du0 < 0 || du1 < 0 || du2 < 0))) return 0;   // yalnız değiyor
 
         // B'nin düzlemi
         double f1x = b1x - b0x, f1y = b1y - b0y, f1z = b1z - b0z, f2x = b2x - b0x, f2y = b2y - b0y, f2z = b2z - b0z;
         double n2x = f1y * f2z - f1z * f2y, n2y = f1z * f2x - f1x * f2z, n2z = f1x * f2y - f1y * f2x;
         double l2 = Math.Sqrt(n2x * n2x + n2y * n2y + n2z * n2z);
-        if (l2 < 1e-14) return false;
+        if (l2 < 1e-14) return 0;
         double d2 = -(n2x * b0x + n2y * b0y + n2z * b0z);
         double dv0 = Snap(n2x * a0x + n2y * a0y + n2z * a0z + d2, l2, sn);
         double dv1 = Snap(n2x * a1x + n2y * a1y + n2z * a1z + d2, l2, sn);
         double dv2 = Snap(n2x * a2x + n2y * a2y + n2z * a2z + d2, l2, sn);
         double dv0dv1 = dv0 * dv1, dv0dv2 = dv0 * dv2;
-        if (dv0dv1 > 0 && dv0dv2 > 0) return false;
-        if (pen > 0 && !((dv0 > 0 || dv1 > 0 || dv2 > 0) && (dv0 < 0 || dv1 < 0 || dv2 < 0))) return false;
+        if (dv0dv1 > 0 && dv0dv2 > 0) return 0;
+        if (pen > 0 && !((dv0 > 0 || dv1 > 0 || dv2 > 0) && (dv0 < 0 || dv1 < 0 || dv2 < 0))) return 0;
 
         // Kesişim doğrusu yönü; en büyük bileşene izdüşür
         double Dx = Math.Abs(n1y * n2z - n1z * n2y), Dy = Math.Abs(n1z * n2x - n1x * n2z), Dz = Math.Abs(n1x * n2y - n1y * n2x);
@@ -253,11 +263,20 @@ static class ClashDetector
 
         if (!Interval(vp0, vp1, vp2, dv0, dv1, dv2, dv0dv1, dv0dv2, out double i10, out double i11)
             || !Interval(up0, up1, up2, du0, du1, du2, du0du1, du0du2, out double i20, out double i21))
-            return pen <= 0 && Coplanar(n1x, n1y, n1z, t, a, b);   // eş düzlemli = değen yüzler
+            return pen <= 0 && Coplanar(n1x, n1y, n1z, t, a, b) ? 1 : 0;   // eş düzlemli = değen yüzler
         if (i10 > i11) (i10, i11) = (i11, i10);
         if (i20 > i21) (i20, i21) = (i21, i20);
-        if (pen > 0) return Math.Min(i11, i21) - Math.Max(i10, i20) > pen;
-        return !(i11 < i20 - Tol || i21 < i10 - Tol);
+        if (pen > 0)
+        {
+            // Kesişim parçasının GERÇEK uzunluğu (aralıklar eksene izdüşümlü → doğru yönüne göre düzeltilir). Çağıran eleman
+            // çifti boyunca toplar: ince boru dar yüzlerden oluşur, tek yüzün kesişimi toleranstan kısa kalıyordu (kullanıcı
+            // raporu 2026-10-14: Ø25 boru tavayı dikine delmiş, ±5 mm'de çakışma çıkmamış).
+            double ov = Math.Min(i11, i21) - Math.Max(i10, i20);
+            if (ov <= 0) return 0;
+            double Da = ax == 0 ? Dx : ax == 1 ? Dy : Dz;
+            return ov * Math.Sqrt(Dx * Dx + Dy * Dy + Dz * Dz) / Math.Max(Da, 1e-30);
+        }
+        return i11 < i20 - Tol || i21 < i10 - Tol ? 0 : 1;
     }
 
     static double Snap(double d, double len, double tol) => Math.Abs(d) < tol * len ? 0 : d;

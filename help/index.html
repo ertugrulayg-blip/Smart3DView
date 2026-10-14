@@ -122,7 +122,7 @@
   <!--/web-->
   <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
   <ul>
-    <li><b>Hide an element:</b> right-click it → <b>Hide</b> (or select it and press <kbd>H</kbd>); a pipe or duct is hidden together with its insulation. Right-click → <b>Show all</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) brings everything back. Hidden elements are left out of clash detection<!--web--> and Export to web<!--/web-->; Reload shows them again.</li>
+    <li><b>Hide an element:</b> right-click it → <b>Hide</b> (or select it and press <kbd>H</kbd>); a pipe or duct is hidden together with its insulation. Right-click → <b>Show all</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) brings everything back. Hidden elements are left out of clash detection<!--web--> and Export to web<!--/web-->; They stay hidden after Reload.</li>
     <li><b>Models</b> (top left): the host file and every linked model are listed with their element counts. Click a name to hide or show that whole model; hidden models are left out of clash detection.</li>
     <li><b>Show in Revit</b>: select an element and click this button to select it and zoom to it in Revit (host model elements).</li>
     <li><b>Tag</b> (<kbd>T</kbd>): hover over an element to see its category and type next to the cursor.</li>
@@ -138,7 +138,7 @@
   </ul>
 
   <h2 id="en-reload">Reload and multiple windows</h2>
-  <p>After you change the model in Revit, the <b>Reload</b> button turns orange. Click it (<kbd>R</kbd> or <kbd>F5</kbd>): only what changed is read again — elements added, modified or deleted in the model, and linked models that were reloaded, removed, moved or added. Unchanged linked models are not read again. <kbd>Shift</kbd>+<kbd>R</kbd> (or <kbd>Shift</kbd>+click) reads the whole box from scratch, e.g. after changing the view's visibility settings. The camera, the edited box, the tone, clash mode and the selected element are kept. Every click on the <b>Smart 3D View</b> ribbon button opens a <b>new</b> window, so you can keep several areas open side by side.</p>
+  <p>After you change the model in Revit, the <b>Reload</b> button turns orange. Click it (<kbd>R</kbd> or <kbd>F5</kbd>): only what changed is read again — elements added, modified or deleted in the model, and linked models that were reloaded, removed, moved or added. Unchanged linked models are not read again. <kbd>Shift</kbd>+<kbd>R</kbd> (or <kbd>Shift</kbd>+click) reads the whole box from scratch, e.g. after changing the view's visibility settings. The camera, the edited box, the tone, clash mode, the selected element and the elements you hid are kept. Above the button, <b>Auto</b> reloads by itself shortly after every change in Revit; <b>Manual</b> waits for you to press Reload. Every click on the <b>Smart 3D View</b> ribbon button opens a <b>new</b> window, so you can keep several areas open side by side.</p>
 
   <h2 id="en-keys">Keyboard shortcuts</h2>
   <table>
@@ -260,7 +260,7 @@
   <!--/web-->
   <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>
   <ul>
-    <li><b>Eleman gizleme:</b> elemana sağ tıklayın → <b>Gizle</b> (ya da seçip <kbd>H</kbd>); boru/kanal izolasyonuyla birlikte gizlenir. Sağ tık → <b>Tümünü göster</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) hepsini geri getirir. Gizlenenler çakışma denetimine<!--web--> ve Web'e aktara<!--/web--> girmez; Yenile hepsini yeniden gösterir.</li>
+    <li><b>Eleman gizleme:</b> elemana sağ tıklayın → <b>Gizle</b> (ya da seçip <kbd>H</kbd>); boru/kanal izolasyonuyla birlikte gizlenir. Sağ tık → <b>Tümünü göster</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) hepsini geri getirir. Gizlenenler çakışma denetimine<!--web--> ve Web'e aktara<!--/web--> girmez; Yenile sonrasında da gizli kalırlar.</li>
     <li><b>Modeller</b> (sol üst): ana dosya ve her bağlı model eleman sayısıyla listelenir. Bir ada tıklayınca o modelin tamamı gizlenir ya da gösterilir; gizli modeller çakışma denetimine girmez.</li>
     <li><b>Revit'te göster</b>: bir elemanı seçip bu düğmeye tıklayın; eleman Revit'te seçilir ve gösterilir (ana modeldeki elemanlar).</li>
     <li><b>Etiket</b> (<kbd>T</kbd>): imleci bir elemanın üstünde gezdirin; kategori ve tipi imlecin yanında yazar.</li>
@@ -276,7 +276,7 @@
   </ul>
 
   <h2 id="tr-reload">Yenile ve birden çok pencere</h2>
-  <p>Revit'te modeli değiştirdiğinizde <b>Yenile</b> düğmesi turuncu olur. Tıklayın (<kbd>R</kbd> ya da <kbd>F5</kbd>): yalnız değişenler yeniden okunur — modelde eklenen, değiştirilen ya da silinen elemanlar ve yeniden yüklenen, kaldırılan, taşınan ya da eklenen bağlı modeller. Değişmeyen bağlı modeller yeniden okunmaz. <kbd>Shift</kbd>+<kbd>R</kbd> (ya da <kbd>Shift</kbd>+tık) kutunun tamamını baştan okur (ör. görünümün görünürlük ayarlarını değiştirdikten sonra). Kamera, düzenlediğiniz kutu, ton, çakışma modu ve seçili eleman korunur. Şeritteki <b>Smart 3D View</b> düğmesine her tıklama <b>yeni</b> bir pencere açar; birden çok alanı yan yana açık tutabilirsiniz.</p>
+  <p>Revit'te modeli değiştirdiğinizde <b>Yenile</b> düğmesi turuncu olur. Tıklayın (<kbd>R</kbd> ya da <kbd>F5</kbd>): yalnız değişenler yeniden okunur — modelde eklenen, değiştirilen ya da silinen elemanlar ve yeniden yüklenen, kaldırılan, taşınan ya da eklenen bağlı modeller. Değişmeyen bağlı modeller yeniden okunmaz. <kbd>Shift</kbd>+<kbd>R</kbd> (ya da <kbd>Shift</kbd>+tık) kutunun tamamını baştan okur (ör. görünümün görünürlük ayarlarını değiştirdikten sonra). Kamera, düzenlediğiniz kutu, ton, çakışma modu, seçili eleman ve gizlediğiniz elemanlar korunur. Düğmenin üstündeki <b>Otomatik</b> seçiliyse Revit'teki her değişiklikten kısa süre sonra kendiliğinden yenilenir; <b>Elle</b> seçiliyse Yenile'ye basmanız beklenir. Şeritteki <b>Smart 3D View</b> düğmesine her tıklama <b>yeni</b> bir pencere açar; birden çok alanı yan yana açık tutabilirsiniz.</p>
 
   <h2 id="tr-keys">Klavye kısayolları</h2>
   <table>

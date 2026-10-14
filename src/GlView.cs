@@ -158,10 +158,16 @@ sealed unsafe partial class GlView : HwndHost
     /// <summary>Yeni sahne. keepView: kamerayı ve düzenlenmiş kutuyu koru (kutu büyütülünce yeniden okuma).</summary>
     public void SetScene(SceneData scene, bool keepView = false)
     {
+        // Gizlenen elemanlar Yenile / kutu büyütmede gizli kalır (kullanıcı isteği 2026-10-14): id'ler yeni sahnede değiştiği
+        // için Revit kimliğiyle (model + ElementId) eşlenir.
+        var keepHidden = keepView && _scene != null && _hiddenElems.Count > 0 ? HiddenKeys(_scene) : null;
         _scene = scene;
         _uploaded = false;
         Selected = 0;
-        _hiddenElems.Clear();   // id'ler yeni sahnede değişir
+        _hiddenElems.Clear();
+        if (keepHidden != null)
+            for (int i = 0; i < scene.ElemRevitId.Count; i++)
+                if (keepHidden.Contains(ElemKey(scene, i))) _hiddenElems.Add(scene.ElemCanon[i]);
         _clashMode = false;
         Array.Copy(scene.BoxMin, _cMin, 3);
         Array.Copy(scene.BoxMax, _cMax, 3);
