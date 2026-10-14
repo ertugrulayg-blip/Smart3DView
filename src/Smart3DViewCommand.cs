@@ -83,6 +83,17 @@ static class BoxResolver
             }
             if (any)
             {
+                // Seçimde katın dışına taşan eleman (ör. yanlışlıkla seçilen 3 kat çıkan boru) varsa ve seçim alanı genişse
+                // (bir kenarı 6 m'den uzun) okuma çok uzar → sorulur. Dar seçimde sorulmaz, seçilenin tamamı açılır (hızlı).
+                // Kullanıcı isteği 2026-10-14: "amaç boş yere beklememek".
+                if (view is ViewPlan vp && Math.Max(max.X - min.X, max.Y - min.Y) > AskAboveSide)
+                {
+                    var (z0, z1) = PlanZRange(doc, vp);
+                    if (min.Z < z0 - Margin || max.Z > z1 + Margin)
+                    {
+                        if (!AskWholeSelection()) { min = new XYZ(min.X, min.Y, Math.Max(min.Z, z0)); max = new XYZ(max.X, max.Y, Math.Min(max.Z, z1)); }
+                    }
+                }
                 var m = new XYZ(Margin, Margin, Margin);
                 return FromLocal(Transform.Identity, min - m, max + m,
                     L.T($"{core.Count} seçili eleman", $"{core.Count} selected element(s)"));
@@ -115,6 +126,24 @@ static class BoxResolver
         }
 
         return null;
+    }
+
+    const double AskAboveSide = 6000 / 304.8; // ft — seçim alanının bir kenarı bundan uzunsa kat dışı sorulur
+
+    /// <summary>true: tamamını göster; false: yalnız bu kat (varsayılan, Esc de bu).</summary>
+    static bool AskWholeSelection()
+    {
+        var td = new TaskDialog(Product.Name)
+        {
+            MainInstruction = L.T("Seçilen elemanlar katın dışına taşıyor.", "The selection extends beyond this level."),
+            MainContent = L.T("Tamamını göstermek uzun sürebilir.", "Showing all of it may take a while."),
+            AllowCancellation = true,
+        };
+        td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, L.T("Yalnız bu kat", "This level only"));
+        td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, L.T("Tamamını göster", "Show all"),
+            L.T("Kat dışındaki kısımlar da açılır", "Parts outside the level are included"));
+        td.DefaultButton = TaskDialogResult.CommandLink1;
+        return td.Show() == TaskDialogResult.CommandLink2;
     }
 
     static ClipBox FromLocal(Transform frame, XYZ min, XYZ max, string source)
