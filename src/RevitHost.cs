@@ -79,6 +79,74 @@ sealed class RevitHost : IViewerHost
         });
     }
 
+    public void Refresh(object context, SceneData current, IReadOnlyCollection<long> changed, double[] min, double[] max,
+        Action<SceneData?, string?> done, ReadControl? ctl = null)
+    {
+        var ctx = (RevitContext)context;
+        var chg = new HashSet<long>(changed);
+        RevitBridge.Post(_ =>
+        {
+            if (!ctx.Doc.IsValidObject) { done(null, L.T("Model kapatılmış.", "The model has been closed.")); return; }
+            var box = new ClipBox { Frame = ctx.Box.Frame, Min = new XYZ(min[0], min[1], min[2]), Max = new XYZ(max[0], max[1], max[2]), Source = ctx.Box.Source };
+            var view = ctx.Doc.GetElement(ctx.ViewId) as View;
+            ElementId? viewId = view is View3D v3 && !v3.IsTemplate ? view.Id : null;
+
+            // Bağlı modeller: yeniden yüklenen (belge değişir), kaldırılan/boşaltılan, taşınan (örnek değişti) ya da
+            // yeni eklenen bağlantı baştan okunur; diğerlerine dokunulmaz.
+            var links = new Dictionary<long, RevitLinkInstance>();
+            var lc = viewId != null ? new FilteredElementCollector(ctx.Doc, viewId) : new FilteredElementCollector(ctx.Doc);
+            foreach (RevitLinkInstance li in lc.OfClass(typeof(RevitLinkInstance))) links[li.Id.Value] = li;
+            var dropDocs = new HashSet<int>();
+            var keep = new HashSet<long>();
+            int hostDoc = -1;
+            for (int k = 0; k < current.DocKeys.Count; k++)
+            {
+                long key = current.DocKeys[k];
+                if (key == -1) { hostDoc = k; continue; }
+                bool same = links.TryGetValue(key, out var li) && !chg.Contains(key) && li.GetLinkDocument() is { } ld
+                    && current.Docs[k] is Document od && od.IsValidObject && od.Equals(ld);
+                if (same) keep.Add(key); else dropDocs.Add(k);
+            }
+            int linksRead = 0;   // yeniden okunan + kaldırılan bağlı modeller
+            foreach (var key in links.Keys) if (!keep.Contains(key)) linksRead++;
+            foreach (int k in dropDocs) if (!links.ContainsKey(current.DocKeys[k])) linksRead++;
+
+            // Ana model: değişen elemanlar + onlara bağlı olanlar (izolasyon, sprinkler bağlantısı) çıkarılır ve yeniden okunur.
+            var drop = new HashSet<uint>();
+            var reread = new HashSet<long>(chg);
+            if (hostDoc >= 0)
+            {
+                for (int i = 0; i < current.ElemRevitId.Count; i++)
+                    if (current.ElemDoc[i] == hostDoc && chg.Contains(current.ElemRevitId[i])) drop.Add((uint)i + 1);
+                var dep = new List<uint>();
+                for (int i = 0; i < current.ElemCanon.Count; i++)
+                    if (drop.Contains(current.ElemCanon[i]) && !drop.Contains((uint)i + 1)) dep.Add((uint)i + 1);
+                foreach (var pk in current.Connected)
+                {
+                    uint a = (uint)(pk >> 32), b = (uint)pk;
+                    if (drop.Contains(a) && !drop.Contains(b)) dep.Add(b);
+                    else if (drop.Contains(b) && !drop.Contains(a)) dep.Add(a);
+                }
+                foreach (var id in dep)
+                {
+                    drop.Add(id);
+                    if (current.ElemDoc[(int)id - 1] == hostDoc) reread.Add(current.ElemRevitId[(int)id - 1]);
+                }
+            }
+
+            var trimmed = current.CloneWithout(drop, dropDocs);
+            var job = new SceneJob(ctx.Doc, view, box, trimmed, (li, _) => li == null || !keep.Contains(li.Id.Value), reread);
+            int removed = drop.Count;
+            Run(job, ctx.Doc, ctl, L.T("Yenileme iptal edildi.", "Reload cancelled."), done, scene =>
+            {
+                scene.Context = new RevitContext(ctx.Doc, ctx.ViewId, box);
+                scene.RefreshNote = L.T(
+                    $"{job.Done} eleman okundu, {removed} eleman güncellendi/çıkarıldı" + (linksRead > 0 ? $", {linksRead} bağlı model yeniden okundu/kaldırıldı" : ", bağlı modellere dokunulmadı"),
+                    $"{job.Done} element(s) read, {removed} updated/removed" + (linksRead > 0 ? $", {linksRead} linked model(s) re-read/removed" : ", linked models untouched"));
+            });
+        });
+    }
+
     /// <summary>İşi dilim dilim yürütür: her dilimden sonra Revit'e bırakır, ilerlemeyi bildirir, iptale bakar.</summary>
     static void Run(SceneJob job, Document doc, ReadControl? ctl, string cancelled, Action<SceneData?, string?> done, Action<SceneData> complete)
     {

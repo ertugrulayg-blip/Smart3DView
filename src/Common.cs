@@ -43,6 +43,12 @@ interface IViewerHost
     /// <param name="ctl">Dilimli okuma: büyük alanda onay, ilerleme ve iptal (Esc). null → tek seferde.</param>
     void Recollect(object context, double[] min, double[] max, System.Action<SceneData?, string?> done, SceneData? append = null, ReadControl? ctl = null);
 
+    /// <summary>Yenile: yalnız değişenleri yansıtır. Ana modelde <paramref name="changed"/> elemanları (ve onlara bağlı
+    /// izolasyon/sprinkler) sahneden çıkarılıp yeniden okunur; bağlı modeller yalnız yeniden yüklenmiş, kaldırılmış,
+    /// taşınmış ya da yeni eklenmişse okunur. Kalan her şey olduğu gibi korunur.</summary>
+    void Refresh(object context, SceneData current, System.Collections.Generic.IReadOnlyCollection<long> changed, double[] min, double[] max,
+        System.Action<SceneData?, string?> done, ReadControl? ctl = null);
+
     /// <summary>PNG'yi Revit'e görüntü görünümü (Renderings) olarak ekler.</summary>
     void SaveImage(object context, string pngPath, System.Action<string> done);
 
@@ -56,8 +62,9 @@ interface IViewerHost
 /// <summary>Revit modelindeki değişiklik bildirimi (App, DocumentChanged'den çağırır). Pencere Revit türü bilmeden dinler.</summary>
 static class ModelWatch
 {
-    public static event System.Action<object>? Changed;
-    public static void Raise(object doc) => Changed?.Invoke(doc);
+    /// <summary>Belge ve eklenen/değişen/silinen eleman no'ları (Revit ElementId değeri).</summary>
+    public static event System.Action<object, System.Collections.Generic.IReadOnlyCollection<long>>? Changed;
+    public static void Raise(object doc, System.Collections.Generic.IReadOnlyCollection<long> ids) => Changed?.Invoke(doc, ids);
 }
 
 static class Product

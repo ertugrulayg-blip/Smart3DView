@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -95,6 +96,7 @@ sealed partial class ViewerWindow : Window
     string _timing = "";
     ClashResult? _clash;
     bool _clashOn, _busy, _stale;   // _stale: Revit modeli okunduktan sonra değişti → "Yenile" uyarır
+    readonly HashSet<long> _changed = new();   // pencere açıldıktan/son Yenile'den beri Revit'te eklenen/değişen/silinen eleman no'ları
 
     static string Hint => L.T(
         "Tık: seç  ·  Shift + orta tuş: döndür  ·  Orta tuş: kaydır  ·  Tekerlek: yakınlaştır  ·  Çift tık / F: sığdır  ·  Esc: seçimi bırak",
@@ -110,8 +112,8 @@ sealed partial class ViewerWindow : Window
         LoadSettings();
 
         _btnReload = MakeTool("⟳  " + L.T("Yenile", "Reload"),
-            L.T("Revit'te yapılan değişiklikleri yansıt — kamera, kutu, ton, çakışma ve seçim korunur  (R / F5)",
-                "Reflect the changes made in Revit — camera, box, tone, clash and selection are kept  (R / F5)"), Reload);
+            L.T("Revit'te yapılan değişiklikleri yansıt — yalnız değişen elemanlar ve yeniden yüklenen bağlı modeller okunur; kamera, kutu, ton, çakışma ve seçim korunur  (R / F5 · Shift: baştan oku)",
+                "Reflect the changes made in Revit — only changed elements and reloaded links are read; camera, box, tone, clash and selection are kept  (R / F5 · Shift: read everything)"), Reload);
         _btnBox = MakeTool("▣  " + L.T("Kutu", "Box"),
             L.T("Kesit kutusunu düzenle: mavi tutamaçları sürükleyerek yüzleri içeri/dışarı al  (B)",
                 "Edit the section box: drag the blue handles to move faces in/out  (B)"), ToggleBox);
@@ -210,9 +212,11 @@ sealed partial class ViewerWindow : Window
         StateChanged += (_, _) => RefreshFlyouts();
         PreviewKeyDown += (_, e) => { if (e.Key == Key.F1) { Help.Open(); e.Handled = true; } };
         Action licChanged = () => Dispatcher.BeginInvoke(RefreshTools);
-        Action<object> modelChanged = doc => Dispatcher.BeginInvoke(() =>
+        Action<object, IReadOnlyCollection<long>> modelChanged = (doc, ids) => Dispatcher.BeginInvoke(() =>
         {
-            if (_stale || _host == null || _scene?.Context == null || !_host.IsFromDoc(_scene.Context, doc)) return;
+            if (_host == null || _scene?.Context == null || !_host.IsFromDoc(_scene.Context, doc)) return;
+            _changed.UnionWith(ids);   // Yenile yalnız bunları okur
+            if (_stale) return;
             _stale = true;
             RefreshTools();
         });
@@ -358,29 +362,49 @@ sealed partial class ViewerWindow : Window
             if (lo[k] < cl[k] - 1e-6 || hi[k] > ch[k] + 1e-6) { Grow(lo, hi); return; }
     }
 
-    /// <summary>Aynı alanı Revit'ten yeniden okur (model değişiklikleri). Pencerede yapılanlar korunur: kamera,
-    /// düzenlenmiş kutu, ton, kutu/taşı modu, çakışma (yeni geometride yeniden hesaplanır) ve seçili eleman (ID ile).</summary>
+    /// <summary>Revit'teki değişiklikleri yansıtır. Pencerede yapılanlar korunur: kamera, düzenlenmiş kutu, ton,
+    /// kutu/taşı modu, çakışma (yeniden hesaplanır) ve seçili eleman (ID ile).
+    /// R / F5: yalnız değişenler — ana modelde eklenen/değişen/silinen elemanlar, bağlı modellerde yalnız yeniden
+    /// yüklenen/kaldırılan/taşınan/eklenen bağlantılar okunur (kullanıcı isteği 2026-10-14).
+    /// Shift+R / Shift+F5 / Shift+tık: görünen kutu baştan okunur (görünüm gizleme ayarları vb. için).</summary>
     void Reload()
     {
         if (_busy) return;
         if (_host == null || _scene?.Context == null) { Flash(L.T("Revit bağlantısı yok; yenilenemez.", "No Revit link; cannot reload.")); return; }
-        // Yalnız görünen kutu (hızlı); dışına çıkılınca kutu büyütme yeni elemanları ekler.
-        double[] lo = _view.BoxMin, hi = _view.BoxMax;
+        bool full = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
         string? selKey = _view.SelectedKey;
         _busy = true;
-        Flash(L.T("Revit'ten yeniden okunuyor…  ·  Esc: iptal", "Reloading from Revit…  ·  Esc: cancel"));
-        var ctl = NewRead(L.T("Yeniden okunuyor", "Reloading"), confirm: false);
-        _host.Recollect(_scene.Context, lo, hi, (scene, err) => Dispatcher.BeginInvoke(() =>
+        var snapshot = new List<long>(_changed);
+        _changed.Clear();   // okuma sürerken gelen değişiklikler bir sonraki Yenile'ye kalır
+        Action<SceneData?, string?> done = (scene, err) => Dispatcher.BeginInvoke(() =>
         {
             _busy = false;
             _read = null;
-            if (scene == null) { Flash(err ?? "?"); return; }
-            _stale = false;
+            if (scene == null) { _changed.UnionWith(snapshot); Flash(err ?? "?"); return; }
+            if (full) _changed.Clear();
+            _stale = _changed.Count > 0;
             Load(scene, _docTitle, keepView: true);
             _view.SelectByKey(selKey);
             RefreshTools();
-            Flash(L.T("Revit'teki değişiklikler yansıtıldı — ", "Changes from Revit applied — ") + Breakdown(scene));
-        }), ctl: ctl);
+            Flash(L.T("Revit'teki değişiklikler yansıtıldı — ", "Changes from Revit applied — ")
+                + (scene.RefreshNote.Length > 0 ? scene.RefreshNote + " · " : "") + Breakdown(scene));
+        });
+        if (full)
+        {
+            // Yalnız görünen kutu (hızlı); dışına çıkılınca kutu büyütme yeni elemanları ekler.
+            Flash(L.T("Revit'ten baştan okunuyor…  ·  Esc: iptal", "Reloading everything from Revit…  ·  Esc: cancel"));
+            _host.Recollect(_scene.Context, _view.BoxMin, _view.BoxMax, done, ctl: NewRead(L.T("Yeniden okunuyor", "Reloading"), confirm: false));
+            return;
+        }
+        // Okunan alan ∪ görünen kutu: kalan elemanlar zaten bu alandan; değişenler aynı alanda aranır.
+        double[] lo = new double[3], hi = new double[3];
+        for (int k = 0; k < 3; k++)
+        {
+            lo[k] = Math.Min(_scene.BoxMin[k], _view.BoxMin[k]);
+            hi[k] = Math.Max(_scene.BoxMax[k], _view.BoxMax[k]);
+        }
+        Flash(L.T("Revit'teki değişiklikler okunuyor…  ·  Esc: iptal", "Reading the changes from Revit…  ·  Esc: cancel"));
+        _host.Refresh(_scene.Context, _scene, snapshot, lo, hi, done, NewRead(L.T("Değişiklikler okunuyor", "Reading the changes"), confirm: false));
     }
 
     void CycleTol()

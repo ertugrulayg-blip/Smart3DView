@@ -104,7 +104,9 @@ sealed class SceneJob : IDisposable
     public double SecondsPerElement => _done == 0 ? 0 : _ctx.Watch.Elapsed.TotalSeconds / _done;
 
     /// <param name="include">Verilirse yalnız true dönen belgeler okunur (li null = ana model). Web'e aktarımda seçilen modeller.</param>
-    public SceneJob(Document doc, View? activeView, ClipBox box, SceneData? prev, Func<RevitLinkInstance?, Document, bool>? include = null)
+    /// <param name="hostOnly">Yenile: ana modelden yalnız bu elemanlar okunur (değişenler; sahneden önce çıkarılmış olmalı).</param>
+    public SceneJob(Document doc, View? activeView, ClipBox box, SceneData? prev, Func<RevitLinkInstance?, Document, bool>? include = null,
+        HashSet<long>? hostOnly = null)
     {
         _doc = doc; _box = box;
         var scene = prev?.CloneForAppend() ?? new SceneData();
@@ -127,7 +129,7 @@ sealed class SceneJob : IDisposable
             if (include != null && !include(li, d)) continue;
             int di = -1;
             for (int k = 0; k < scene.Docs.Count && k < scene.DocKeys.Count; k++)
-                if (scene.DocKeys[k] == key && ReferenceEquals(scene.Docs[k], d)) { di = k; break; }
+                if (scene.DocKeys[k] == key && (ReferenceEquals(scene.Docs[k], d) || scene.Docs[k] is Document od && od.IsValidObject && od.Equals(d))) { di = k; break; }
             if (di < 0)
             {
                 if (scene.Docs.Count > 250) continue;
@@ -143,7 +145,7 @@ sealed class SceneJob : IDisposable
                 for (int j = 0; j < scene.ElemDoc.Count; j++)
                     if (scene.ElemDoc[j] == di) existing[scene.ElemRevitId[j]] = (uint)(j + 1);
             }
-            var pass = new DocPass(_ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, (byte)di, null, existing);
+            var pass = new DocPass(_ctx, d, toLocal, li == null ? viewId : null, li == null ? null : d.Title, (byte)di, null, existing, li == null ? hostOnly : null);
             var ids = pass.Prepare();
             if (li == null) _host = _work.Count;
             _work.Add((pass, ids));
@@ -363,16 +365,18 @@ sealed class DocPass
     // Bu belgedeki Revit eleman no → sahne no; geçiş sonunda izolasyon-taşıyıcı ve connector ilişkileri buna çevrilir.
     readonly Dictionary<long, uint> _sceneId = new();
     readonly List<(uint id, long host)> _pendingHost = new();
+    readonly List<(uint id, long other)> _pendingConn = new();   // sprinkler → bağlı olduğu boru/fitting (Revit no)
+    readonly HashSet<long>? _only;                         // Yenile: yalnız bu elemanlar okunur (Revit'te değişenler)
     readonly double _x0, _y0, _z0, _x1, _y1, _z1; // kutu (yerel)
     Tone _tone;
     uint _id;
     bool _emitted;
 
     public DocPass(SceneCollector.Ctx c, Document doc, Transform docToLocal, ElementId? viewId, string? linkName, byte docIdx, Options? trayOpt,
-        Dictionary<long, uint>? existing = null)
+        Dictionary<long, uint>? existing = null, HashSet<long>? only = null)
     {
         _c = c; _doc = doc; _toLocal = docToLocal; _toDoc = docToLocal.Inverse; _viewId = viewId; _linkName = linkName;
-        _docIdx = docIdx; TrayOpt = trayOpt; _existing = existing;
+        _docIdx = docIdx; TrayOpt = trayOpt; _existing = existing; _only = only;
         if (existing != null) foreach (var kv in existing) _sceneId[kv.Key] = kv.Value;   // yeni elemanların bağlantıları eskilere de çözülsün
         _x0 = c.Min.X; _y0 = c.Min.Y; _z0 = c.Min.Z; _x1 = c.Max.X; _y1 = c.Max.Y; _z1 = c.Max.Z;
     }
@@ -391,7 +395,15 @@ sealed class DocPass
         var col = _viewId != null ? new FilteredElementCollector(_doc, _viewId) : new FilteredElementCollector(_doc);
         col.WhereElementIsNotElementType().WherePasses(new BoundingBoxIntersectsFilter(outline));
         var res = new List<ElementId>();
-        foreach (Element e in col)
+        IEnumerable<Element> elems = col;
+        if (_only != null)   // Yenile: kutudaki elemanların yalnız no'ları alınır (hızlı), değişenler açılır
+        {
+            var sel = new List<Element>();
+            foreach (var id in col.ToElementIds())
+                if (_only.Contains(id.Value) && _doc.GetElement(id) is { } x) sel.Add(x);
+            elems = sel;
+        }
+        foreach (Element e in elems)
         {
             if (e is RevitLinkInstance || e is ImportInstance || e.ViewSpecific) continue;
             var cat = e.Category;
@@ -439,6 +451,10 @@ sealed class DocPass
         scene.ElemCanon.Add(_id);
         _sceneId[e.Id.Value] = _id;
         if (host != null) _pendingHost.Add((_id, host.Value));
+        // Sprinkler başlığı ucundaki boru/fittinge oturur → "dokunma" toleransında çakışma sayılıyordu. Yalnız
+        // sprinklerin connector'ları okunur (az sayıda; 1.13.0'da tüm elemanlarınki hız için kaldırılmıştı).
+        // Mekanik ekipman/vitrifiye de (santral–kanal, kazan–boru): yardımda "connector ile bağlılar çakışmaz" yazıyor.
+        if (bic == BuiltInCategory.OST_Sprinklers || MechEquipCats.Contains(bic)) ReadConnections(e);
         _c.InfoSeconds += SceneCollector.Ctx.Since(ti);
         return true;
     }
@@ -450,6 +466,29 @@ sealed class DocPass
         foreach (var (id, host) in _pendingHost)
             if (_sceneId.TryGetValue(host, out var h)) scene.ElemCanon[(int)id - 1] = h;
         _pendingHost.Clear();
+        foreach (var (id, other) in _pendingConn)
+            if (_sceneId.TryGetValue(other, out var o) && o != id) scene.Connected.Add(SceneData.PairKey(id, o));
+        _pendingConn.Clear();
+    }
+
+    void ReadConnections(Element e)
+    {
+        var set = Connectors(e);
+        if (set == null) return;
+        try
+        {
+            foreach (Connector c in set)
+            {
+                try
+                {
+                    if (!c.IsConnected) continue;
+                    foreach (Connector r in c.AllRefs)
+                        if (r.Owner is { } o && o.Id != e.Id) _pendingConn.Add((_id, o.Id.Value));
+                }
+                catch { /* bazı connector türleri (mantıksal) AllRefs desteklemez */ }
+            }
+        }
+        catch { }
     }
 
     // ---- ikinci adım: eleman bilgisi --------------------------------------------------------------------------------

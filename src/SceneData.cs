@@ -111,6 +111,81 @@ sealed class SceneData
         return s;
     }
 
+    /// <summary>Yenile (yalnız değişenler): verilen elemanlar (sahne no) ve modeller (Docs indeksi) çıkarılmış, eleman
+    /// numaraları sıkıştırılmış kopya. Kalan elemanlar yeniden okunmaz; çıkarılanlar sonra Revit'ten eklenir.</summary>
+    public SceneData CloneWithout(HashSet<uint> dropElems, HashSet<int> dropDocs)
+    {
+        int n = Labels.Count;
+        var docMap = new int[Docs.Count];
+        var s = new SceneData { FormatLength = FormatLength, FrameAngle = FrameAngle, Source = Source, CumSeconds = CumSeconds, CumRead = CumRead };
+        for (int d = 0; d < Docs.Count; d++)
+        {
+            if (dropDocs.Contains(d)) { docMap[d] = -1; continue; }
+            docMap[d] = s.Docs.Count;
+            s.Docs.Add(Docs[d]); s.DocKeys.Add(DocKeys[d]); s.DocNames.Add(DocNames[d]);
+        }
+        var map = new uint[n + 1];   // eski no → yeni no (0 = çıkarıldı)
+        for (int i = 0; i < n; i++)
+        {
+            uint id = (uint)i + 1;
+            if (dropElems.Contains(id) || ElemDoc[i] >= docMap.Length || docMap[ElemDoc[i]] < 0) continue;
+            map[id] = (uint)s.Labels.Count + 1;
+            s.Labels.Add(Labels[i]); s.ElemColor.Add(ElemColor[i]); s.ElemDetail.Add(ElemDetail[i]); s.ElemGroup.Add(ElemGroup[i]);
+            s.ElemCat.Add(ElemCat[i]); s.ElemRevitId.Add(ElemRevitId[i]); s.ElemUid.Add(ElemUid[i]);
+            s.ElemDoc.Add((byte)docMap[ElemDoc[i]]); s.ElemTag.Add(ElemTag[i]);
+            s.ElemCanon.Add(0);
+        }
+        for (int i = 0; i < n; i++)
+        {
+            uint nid = map[i + 1];
+            if (nid == 0) continue;
+            uint c = ElemCanon[i];
+            s.ElemCanon[(int)nid - 1] = c > 0 && c <= n && map[c] != 0 ? map[c] : nid;
+        }
+        foreach (var k in Connected)
+        {
+            uint a = map[(uint)(k >> 32)], b = map[(uint)k];
+            if (a != 0 && b != 0) s.Connected.Add(PairKey(a, b));
+        }
+        s.CatNames.AddRange(CatNames); s.CatDisc.AddRange(CatDisc);
+
+        var vmap = new uint[Vertices.Count];
+        for (int v = 0; v < Vertices.Count; v++)
+        {
+            var x = Vertices[v];
+            if (x.Id != 0 && (x.Id > n || map[x.Id] == 0)) { vmap[v] = uint.MaxValue; continue; }
+            if (x.Id != 0) x.Id = map[x.Id];
+            vmap[v] = (uint)s.Vertices.Count;
+            s.Vertices.Add(x);
+        }
+        void Tris(List<uint> src, List<uint> dst)
+        {
+            for (int t = 0; t + 2 < src.Count; t += 3)
+            {
+                uint a = vmap[src[t]], b = vmap[src[t + 1]], c = vmap[src[t + 2]];
+                if (a == uint.MaxValue || b == uint.MaxValue || c == uint.MaxValue) continue;
+                dst.Add(a); dst.Add(b); dst.Add(c);
+            }
+        }
+        Tris(Opaque, s.Opaque);
+        Tris(Glass, s.Glass);
+        for (int e = 0; e + 1 < Edges.Count; e += 2)
+        {
+            var a = Edges[e]; var b = Edges[e + 1];
+            if (a.Id != 0 && (a.Id > n || map[a.Id] == 0)) continue;
+            if (a.Id != 0) { a.Id = map[a.Id]; b.Id = a.Id; }
+            s.Edges.Add(a); s.Edges.Add(b);
+        }
+        foreach (var p0 in Snaps)
+        {
+            var p = p0;
+            if (p.Id != 0 && (p.Id > n || map[p.Id] == 0)) continue;
+            if (p.Id != 0) p.Id = map[p.Id];
+            s.Snaps.Add(p);
+        }
+        return s;
+    }
+
     public static ulong PairKey(uint a, uint b) => a < b ? ((ulong)a << 32) | b : ((ulong)b << 32) | a;
 
     /// <summary>İlk açılan (görünen) kutu; okunan alan (BoxMin/Max) ön yükleme payıyla daha büyük olabilir.</summary>
@@ -124,6 +199,7 @@ sealed class SceneData
     public double CumSeconds;
     public int CumRead;
     public string Timing = ""; // okuma süresinin dökümü (teşhis için, bilgi yazısının ipucunda)
+    public string RefreshNote = ""; // Yenile (yalnız değişenler) özeti: okunan/çıkarılan eleman, bağlı modeller
     public string Source = "";
     public int ElementCount => Labels.Count;
     public int TriangleCount => (Opaque.Count + Glass.Count) / 3;

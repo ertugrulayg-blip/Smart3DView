@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -45,7 +46,12 @@ public class App : IExternalApplication
         app.ControlledApplication.DocumentChanged += (_, e) =>
         {
             if (e.GetTransactionNames().Any(n => n.StartsWith(Product.Name))) return;
-            ModelWatch.Raise(e.GetDocument());
+            // Yenile yalnız bunları yeniden okur (silinenler sahneden çıkar).
+            var ids = new List<long>();
+            foreach (var id in e.GetAddedElementIds()) ids.Add(id.Value);
+            foreach (var id in e.GetModifiedElementIds()) ids.Add(id.Value);
+            foreach (var id in e.GetDeletedElementIds()) ids.Add(id.Value);
+            ModelWatch.Raise(e.GetDocument(), ids);
         };
         return Result.Succeeded;
     }
