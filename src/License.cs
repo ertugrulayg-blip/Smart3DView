@@ -147,8 +147,8 @@ static class License
             }
             return (false, code switch
             {
-                HttpStatusCode.NotFound => L.T("Bu anahtar bulunamadı. Satın alma e-postasındaki anahtarı eksiksiz yapıştırın.",
-                                               "Key not found. Paste the full key from your purchase e-mail."),
+                HttpStatusCode.NotFound => L.T("Bu anahtar bulunamadı. Anahtarı eksiksiz yapıştırın: sipariş e-postasındaki \"Access purchase\" → Polar müşteri sayfası → Smart3DView-Licence → kopyala.",
+                                               "Key not found. Paste the full key: \"Access purchase\" in the order e-mail → Polar customer page → Smart3DView-Licence → copy."),
                 HttpStatusCode.Forbidden => L.T("Anahtar iptal edilmiş ya da 2 bilgisayar sınırına ulaşılmış. Eski bilgisayarda 'Bu bilgisayardaki lisansı kaldır' ile yer açabilirsiniz.",
                                                 "The key is revoked or already used on 2 computers. Use 'Remove license from this computer' on the old one to free a seat."),
                 _ => L.T($"Etkinleştirilemedi (HTTP {(int)code}).", $"Activation failed (HTTP {(int)code})."),

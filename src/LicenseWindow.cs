@@ -44,8 +44,8 @@ sealed class LicenseWindow : Window
         _buyPanel.Children.Add(buy);
         _buyPanel.Children.Add(new TextBlock
         {
-            Text = L.T("Tek seferlik ödeme · süresiz · 2 bilgisayar. Anahtar satın alma e-postanızla gelir.",
-                       "One-time payment · perpetual · 2 computers. The key arrives in your purchase e-mail."),
+            Text = L.T("Tek seferlik ödeme · süresiz · 2 bilgisayar. Anahtar: sipariş e-postasındaki \"Access purchase\" → Polar müşteri sayfası → Smart3DView-Licence (e-postanın kendisinde yazmaz).",
+                       "One-time payment · perpetual · 2 computers. Your key: \"Access purchase\" in the order e-mail → Polar customer page → Smart3DView-Licence (it is not in the e-mail itself)."),
             FontSize = 11, Foreground = Brushes.Gray, Margin = new Thickness(0, 6, 0, 16), TextWrapping = TextWrapping.Wrap,
         });
         _buyPanel.Children.Add(new TextBlock { Text = L.T("Lisans anahtarı", "License key"), FontSize = 12, Margin = new Thickness(0, 0, 0, 4) });
