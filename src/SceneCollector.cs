@@ -394,25 +394,74 @@ sealed class DocPass
         var outline = new Outline(new XYZ(x0, y0, z0), new XYZ(x1, y1, z1));
         var col = _viewId != null ? new FilteredElementCollector(_doc, _viewId) : new FilteredElementCollector(_doc);
         col.WhereElementIsNotElementType().WherePasses(new BoundingBoxIntersectsFilter(outline));
-        var res = new List<ElementId>();
-        IEnumerable<Element> elems = col;
-        if (_only != null)   // Yenile: kutudaki elemanların yalnız no'ları alınır (hızlı), değişenler açılır
+        ICollection<ElementId> ids = col.ToElementIds();
+        // Revit kesit kutusu açık 3B görünüm: görünüm toplayıcısı kesit kutusunun dışındakileri hiç vermez → kutu
+        // Revit'in kesit kutusundan büyütülünce bağlı modeller gelir, ana modelinkiler gelmezdi (kullanıcı raporu
+        // 2026-10-15). Kutunun dışındakiler görünümsüz toplanır; görünüm gizlemesi (eleman, kategori, filtre,
+        // çalışma kümesi) elle uygulanır.
+        HashSet<long>? inView = null;
+        View3D? sbView = null;
+        BoundingBoxXYZ? sb = null;
+        if (_viewId != null && _doc.GetElement(_viewId) is View3D v3 && v3.IsSectionBoxActive)
         {
-            var sel = new List<Element>();
-            foreach (var id in col.ToElementIds())
-                if (_only.Contains(id.Value) && _doc.GetElement(id) is { } x) sel.Add(x);
-            elems = sel;
+            sbView = v3;
+            sb = v3.GetSectionBox();
+            inView = new HashSet<long>();
+            foreach (var id in ids) inView.Add(id.Value);
+            ids = new FilteredElementCollector(_doc).WhereElementIsNotElementType()
+                .WherePasses(new BoundingBoxIntersectsFilter(outline)).ToElementIds();
         }
-        foreach (Element e in elems)
+        var res = new List<ElementId>();
+        foreach (var id in ids)
         {
+            if (_only != null && !_only.Contains(id.Value)) continue;   // Yenile: yalnız değişenler açılır
+            if (_existing != null && _existing.ContainsKey(id.Value)) continue;   // zaten yüklü (kutu büyütme)
+            if (_doc.GetElement(id) is not { } e) continue;
             if (e is RevitLinkInstance || e is ImportInstance || e.ViewSpecific) continue;
             var cat = e.Category;
             if (cat == null || cat.CategoryType != CategoryType.Model) continue;
             if (Excluded.Contains(cat.BuiltInCategory)) continue;
-            if (_existing != null && _existing.ContainsKey(e.Id.Value)) continue;   // zaten yüklü (kutu büyütme)
+            if (inView != null && !inView.Contains(id.Value) && !VisibleOutsideSectionBox(e, cat, sbView!, sb!)) continue;
             res.Add(e.Id);
         }
         return res;
+    }
+
+    List<(ParameterFilterElement f, ICollection<ElementId> cats)>? _hiddenFilters;
+
+    /// <summary>Kesit kutulu görünümün toplayıcısının vermediği eleman: kesit kutusunun içinde kalıyorsa gerçekten
+    /// gizlidir; dışındaysa görünüm gizlemesi (eleman, kategori, gizleyen filtre, çalışma kümesi) yoksa okunur.</summary>
+    bool VisibleOutsideSectionBox(Element e, Category cat, View3D v, BoundingBoxXYZ sb)
+    {
+        try
+        {
+            if (e.get_BoundingBox(null) is not { } bb) return false;
+            var inv = sb.Transform.Inverse;
+            bool inside = true;
+            const double tol = 1e-3;
+            foreach (var c in BoxResolver.Corners(bb.Min, bb.Max))
+            {
+                var p = inv.OfPoint(c);
+                if (p.X < sb.Min.X - tol || p.Y < sb.Min.Y - tol || p.Z < sb.Min.Z - tol
+                    || p.X > sb.Max.X + tol || p.Y > sb.Max.Y + tol || p.Z > sb.Max.Z + tol) { inside = false; break; }
+            }
+            if (inside) return false;   // kesit kutusunun içinde ama görünümde yok → gizlenmiş
+
+            if (e.IsHidden(v)) return false;
+            if (v.GetCategoryHidden(cat.Id) || cat.Parent != null && v.GetCategoryHidden(cat.Parent.Id)) return false;
+            if (_doc.IsWorkshared && e.WorksetId != WorksetId.InvalidWorksetId && !v.IsWorksetVisible(e.WorksetId)) return false;
+            if (_hiddenFilters == null)
+            {
+                _hiddenFilters = new();
+                foreach (var fid in v.GetFilters())
+                    if (!v.GetFilterVisibility(fid) && _doc.GetElement(fid) is ParameterFilterElement pf)
+                        _hiddenFilters.Add((pf, pf.GetCategories()));
+            }
+            foreach (var (pf, cats) in _hiddenFilters)
+                if (cats.Contains(cat.Id) && pf.GetElementFilter() is { } ef && ef.PassesFilter(e)) return false;
+            return true;
+        }
+        catch { return true; }
     }
 
     /// <summary>Tek elemanı okur. deferTrays ise düz tava okunmaz, false döner (Fine görünümle en sona kalır).</summary>
