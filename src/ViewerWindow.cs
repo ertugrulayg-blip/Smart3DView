@@ -163,12 +163,15 @@ sealed partial class ViewerWindow : Window
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
         _flyouts.Add(MakeFlyout(_btnClash, () => _clashOn, _btnTol));
 #if !STORE
-        // Çakışma açık kaldıkça Web'e aktar düğmesinin üstünde kısa ipucu (tıklanınca aktarır). Tolerans şeridiyle
-        // çakışırsa RefreshFlyouts onu bir sıra yukarı alır → yazılar üst üste binmez.
-        _clashWebHint = MakeTool(L.T("Ayrıntılı çakışma raporu ↓", "Detailed clash report ↓"),
+        // Çakışma açık kaldıkça sol altta, durum yazısının hemen üstünde sarı kısa ipucu (tıklanınca Web'e aktarır).
+        // Eskiden Web'e aktar düğmesinin üstünde, tolerans şeridinin de üstünde havada duruyordu (kullanıcı 2026-10-16:
+        // "çok yukarda ve anlamsız duruyor, sol altta kontrol yazısının üstünde sarı yazabilir").
+        _clashWebHint = MakeTool(L.T("Ayrıntılı çakışma raporu için: Web'e aktar ↗", "Detailed clash report: Export to web ↗"),
             L.T("Çakışmaları gruplandırılmış olarak görmek ve rapor almak için Web'e aktar'ı kullanın.",
                 "Use Export to web to see the clashes grouped and get a report."), () => _ = ExportCurrent());
-        _flyouts.Add(MakeFlyout(_btnWeb, () => _clashOn, _clashWebHint));
+        var hintFly = MakeFlyout(_bar, () => _clashOn, _clashWebHint);
+        hintFly.AlignLeft = true; hintFly.Plain = true;
+        _flyouts.Add(hintFly);
 #endif
 
         var barGrid = new Grid();
@@ -610,15 +613,17 @@ sealed partial class ViewerWindow : Window
     sealed class Flyout
     {
         public System.Windows.Controls.Primitives.Popup Popup = null!;
-        public Border Frame = null!, Anchor = null!;
+        public Border Frame = null!;
+        public FrameworkElement Anchor = null!;
         public Func<bool> IsOn = null!;
         public double Lift;   // yan yana iki şerit çakışırsa biri bir sıra yukarı
+        public bool AlignLeft, Plain;   // AlignLeft: çapanın sol kenarına hizalı; Plain: çerçevesiz (yalnız yazı)
     }
     readonly System.Collections.Generic.List<Flyout> _flyouts = new();
 
     /// <summary>3B görünüm bir HwndHost: WPF öğesi üstüne çizilemez → ayrı pencere (Popup). Ana düğmenin ortasına,
     /// hemen üstüne yerleşir; araç açıkken ve pencere etkinken görünür (başka uygulamaya geçince gizlenir).</summary>
-    Flyout MakeFlyout(Border anchor, Func<bool> isOn, params Border[] buttons)
+    Flyout MakeFlyout(FrameworkElement anchor, Func<bool> isOn, params Border[] buttons)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var b in buttons) row.Children.Add(b);
@@ -631,7 +636,7 @@ sealed partial class ViewerWindow : Window
             CustomPopupPlacementCallback = (popupSize, targetSize, _) => new[]
             {
                 new System.Windows.Controls.Primitives.CustomPopupPlacement(
-                    new Point((targetSize.Width - popupSize.Width) / 2, -popupSize.Height - 7 - fly.Lift * popupSize.Height / Math.Max(1, frame.ActualHeight)),
+                    new Point(fly.AlignLeft ? 6 : (targetSize.Width - popupSize.Width) / 2, -popupSize.Height - 7 - fly.Lift * popupSize.Height / Math.Max(1, frame.ActualHeight)),
                     System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal),
             },
         };
@@ -647,8 +652,8 @@ sealed partial class ViewerWindow : Window
         bool dark = Luma(_pal.BgBottom) < 0.45;
         foreach (var f in _flyouts)
         {
-            f.Frame.Background = new SolidColorBrush(_pal.BgBottom);
-            f.Frame.BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x40, 0, 0, 0));
+            f.Frame.Background = f.Plain ? Brushes.Transparent : new SolidColorBrush(_pal.BgBottom);
+            f.Frame.BorderBrush = f.Plain ? Brushes.Transparent : new SolidColorBrush(dark ? Color.FromArgb(0x50, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x40, 0, 0, 0));
             bool open = visible && f.IsOn();
             if (f.Popup.IsOpen != open) f.Popup.IsOpen = open;
         }
@@ -658,7 +663,7 @@ sealed partial class ViewerWindow : Window
         {
             f.Frame.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             double w = f.Frame.DesiredSize.Width, h = f.Frame.DesiredSize.Height;
-            double left = f.Anchor.TranslatePoint(new Point(f.Anchor.ActualWidth / 2, 0), this).X - w / 2;
+            double left = f.AlignLeft ? f.Anchor.TranslatePoint(new Point(), this).X + 6 : f.Anchor.TranslatePoint(new Point(f.Anchor.ActualWidth / 2, 0), this).X - w / 2;
             int row = 0;
             while (row < rows.Count && left < rows[row] + 6) row++;
             if (row == rows.Count) rows.Add(0);
