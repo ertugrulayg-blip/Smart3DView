@@ -241,7 +241,7 @@ static class Win32
         WM_RBUTTONDOWN = 0x0204, WM_RBUTTONUP = 0x0205, WM_MBUTTONDOWN = 0x0207, WM_MBUTTONUP = 0x0208,
         WM_MBUTTONDBLCLK = 0x0209, WM_MOUSEWHEEL = 0x020A, WM_CAPTURECHANGED = 0x0215, WM_GETDLGCODE = 0x0087, WM_TIMER = 0x0113, WM_SETCURSOR = 0x0020;
     public const int MK_CONTROL = 0x0008;
-    public const int MK_SHIFT = 0x0004, VK_SHIFT = 0x10, VK_ESCAPE = 0x1B, VK_HOME = 0x24;
+    public const int MK_SHIFT = 0x0004, VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_ESCAPE = 0x1B, VK_HOME = 0x24;
     public const uint PFD_DRAW_TO_WINDOW = 0x4, PFD_SUPPORT_OPENGL = 0x20, PFD_DOUBLEBUFFER = 0x1;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

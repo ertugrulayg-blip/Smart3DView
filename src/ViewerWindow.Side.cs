@@ -33,7 +33,7 @@ sealed partial class ViewerWindow
         {
             int n = _view.HiddenElementCount;
             Flash(n == 0 ? L.T("Gizlenen elemanlar gösterildi.", "Hidden elements are shown again.")
-                         : L.T($"{n} eleman gizli — sağ tık → Tümünü göster (Shift+H).", $"{n} element(s) hidden — right-click → Show all (Shift+H)."));
+                         : L.T($"{n} eleman gizli — Ctrl+Z geri al, Shift+H tümünü göster.", $"{n} element(s) hidden — Ctrl+Z undo, Shift+H show all."));
             if (_clashOn) _ = RunClash();   // gizlenen elemanlar çakışmaya girmez
         };
         _view.ContextRequested += ShowElementMenu;
@@ -48,8 +48,11 @@ sealed partial class ViewerWindow
         int n = _view.HiddenElementCount;
         var show = new MenuItem { Header = L.T($"Tümünü göster ({n})", $"Show all ({n})"), InputGestureText = "Shift+H", IsEnabled = n > 0 };
         show.Click += (_, _) => _view.ShowAllElements();
+        var undo = new MenuItem { Header = L.T("Gizlemeyi geri al", "Undo hide"), InputGestureText = "Ctrl+Z", IsEnabled = _view.CanUndoHide };
+        undo.Click += (_, _) => _view.UndoHide();
         menu.Items.Add(hide);
         menu.Items.Add(show);
+        menu.Items.Add(undo);
         var dpi = VisualTreeHelper.GetDpi(_view);
         menu.PlacementTarget = _view;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Relative;

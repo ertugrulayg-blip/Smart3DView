@@ -126,6 +126,9 @@ sealed unsafe partial class GlView : HwndHost
     Point3D _pos;
     Vector3D _look = IsoLook;
     double _focus = 10;
+    // ortografik: yarım görüntü genişliği _oh (dünya birimi); kamera konumu yalnız yön ve kırpma düzlemleri için kullanılır
+    bool _ortho;
+    double _oh = 5;
     Point3D _center;
     double _radius = 10, _fitRadius = 1;
 
@@ -161,6 +164,7 @@ sealed unsafe partial class GlView : HwndHost
         // Gizlenen elemanlar Yenile / kutu büyütmede gizli kalır (kullanıcı isteği 2026-10-14): id'ler yeni sahnede değiştiği
         // için Revit kimliğiyle (model + ElementId) eşlenir.
         var keepHidden = keepView && _scene != null && _hiddenElems.Count > 0 ? HiddenKeys(_scene) : null;
+        RemapHideUndo(keepView ? _scene : null, scene);
         _scene = scene;
         _uploaded = false;
         Selected = 0;
@@ -805,7 +809,7 @@ void main(){
         fixed (float* t = ClassColors) GL.Uniform3fv(sClass, 5, t);
         fixed (float* t = DetailColors) GL.Uniform3fv(sDetail, Detail.Count, t);
         fixed (float* t = ModelColors) GL.Uniform3fv(sModel, 16, t);
-        GL.Uniform3f(sCam, (float)_pos.X, (float)_pos.Y, (float)_pos.Z);
+        { var ep = EyePos; GL.Uniform3f(sCam, (float)ep.X, (float)ep.Y, (float)ep.Z); }
         UV(sKey, key); UV(sFill, fill); UV(sSky, sky);
         GL.Uniform4f(sLight, (float)_pal.Ambient, (float)_pal.Key, (float)_pal.Fill, (float)_pal.Sky);
         GL.Uniform1ui(sSel, Selected);
@@ -1100,6 +1104,9 @@ void main(){
 
     double TanH => Math.Tan(Fov * Math.PI / 360);
     double TanV => TanH * _h / Math.Max(1, _w);
+    double OhV => _oh * _h / Math.Max(1, _w);
+    /// <summary>Gölgelendiricideki "kameraya bakan yüz" için göz noktası; ortografikte bakış yönünde çok geride.</summary>
+    Point3D EyePos => _ortho ? _pos - _look * (_radius * 50 + (_center - _pos).Length) : _pos;
 
     (Vector3D right, Vector3D up) Basis()
     {
@@ -1114,8 +1121,9 @@ void main(){
     (double near, double far) Planes()
     {
         double dc = (_center - _pos).Length;
-        double near = Math.Max(dc - _radius * 1.05, _radius * 0.002);
         double far = dc + _radius * 1.05;
+        if (_ortho) return (dc - _radius * 1.05, far);   // ortografikte kameranın arkası da görünür
+        double near = Math.Max(dc - _radius * 1.05, _radius * 0.002);
         return (near, Math.Max(far, near * 2));
     }
 
@@ -1130,13 +1138,14 @@ void main(){
         double[] v2 = { -f.X, -f.Y, -f.Z, Vector3D.DotProduct(f, e) };
         var (n, fa) = Planes();
         double a = 1 / TanH, b = 1 / TanV, c = -(fa + n) / (fa - n), d = -2 * fa * n / (fa - n);
+        if (_ortho) { a = 1 / _oh; b = 1 / OhV; c = -2 / (fa - n); d = -(fa + n) / (fa - n); }
         var m = new float[16];
         for (int i = 0; i < 4; i++)
         {
             m[i] = (float)(a * v0[i]);
             m[4 + i] = (float)(b * v1[i]);
             m[8 + i] = (float)(c * v2[i] + (i == 3 ? d : 0));
-            m[12 + i] = (float)(-v2[i]);
+            m[12 + i] = _ortho ? (i == 3 ? 1f : 0f) : (float)(-v2[i]);
         }
         return m;
     }
@@ -1156,15 +1165,25 @@ void main(){
     {
         var (r, u) = Basis();
         double nx = 2 * x / Math.Max(1, _w) - 1, ny = 1 - 2 * y / Math.Max(1, _h);
+        if (_ortho) return _look;
         return _look + r * (nx * TanH) + u * (ny * TanV); // dir·look = 1
+    }
+
+    /// <summary>İmleç ışınının başlangıcı: perspektifte kamera, ortografikte görüntü düzlemindeki nokta.</summary>
+    Point3D RayOrigin(double x, double y)
+    {
+        if (!_ortho) return _pos;
+        var (r, u) = Basis();
+        double nx = 2 * x / Math.Max(1, _w) - 1, ny = 1 - 2 * y / Math.Max(1, _h);
+        return _pos + r * (nx * _oh) + u * (ny * OhV);
     }
 
     Point3D Unproject(double x, double y, float depth)
     {
         var (n, f) = Planes();
         double zn = 2 * depth - 1;
-        double eye = 2 * f * n / ((f + n) - zn * (f - n));
-        return _pos + RayDir(x, y) * eye;
+        double eye = _ortho ? (zn * (f - n) + (f + n)) / 2 : 2 * f * n / ((f + n) - zn * (f - n));
+        return RayOrigin(x, y) + RayDir(x, y) * eye;
     }
 
     void FitAll(Vector3D look) => FitSphere(_center, _fitRadius, look);
@@ -1176,6 +1195,7 @@ void main(){
         double dist = Math.Max(radius, 0.3) / Math.Sin(Math.Atan(t)) * 1.03;
         _pos = c - _look * dist;
         _focus = dist;
+        _oh = Math.Max(radius, 0.3) * 1.03 * Math.Max(1, _w / (double)Math.Max(1, _h));
         Invalidate();
     }
 
@@ -1238,13 +1258,22 @@ void main(){
     void Pan(double dx, double dy)
     {
         var (right, up) = Basis();
-        double wpp = 2 * TanH * _panDepth / Math.Max(1, _w);
+        double wpp = 2 * (_ortho ? _oh : TanH * _panDepth) / Math.Max(1, _w);
         _pos += (-right * dx + up * dy) * wpp;
     }
 
     void Zoom(Point p, int delta)
     {
         double f = Math.Pow(0.82, delta / 120.0);
+        if (_ortho)
+        {
+            // imlecin altındaki nokta yerinde kalır: ölçek küçülür, kamera imlece doğru yanal kayar
+            var o = RayOrigin(p.X, p.Y);
+            _pos = o + (_pos - o) * f;
+            _oh = Math.Max(_oh * f, _radius * 0.001);
+            Invalidate();
+            return;
+        }
         var (_, hit) = Pick(p);
         double depth = hit is { } h ? Vector3D.DotProduct(h - _pos, _look) : _focus;
         var target = _pos + RayDir(p.X, p.Y) * depth;
@@ -1345,7 +1374,7 @@ void main(){
                     handled = true;
                     return (IntPtr)1;
                 }
-                if ((_cubeHover != null || HomeHit(_lastMouse) || _modelHover != null) && Win32.LoWord(lParam) == 1)   // küp, model listesi: el imleci
+                if ((_cubeHover != null || OverlayButtonHit(_lastMouse) || _modelHover != null) && Win32.LoWord(lParam) == 1)   // küp, model listesi: el imleci
                 {
                     Win32.SetCursor(Win32.LoadCursor(IntPtr.Zero, (IntPtr)32649));
                     handled = true;
@@ -1389,6 +1418,8 @@ void main(){
                 if (ModelHit(_down) is { } mn) { ModelToggled?.Invoke(mn); handled = true; return IntPtr.Zero; }
                 if (CubeHit(_down) is { } cdir) { CubeClick(cdir); handled = true; return IntPtr.Zero; }
                 if (HomeHit(_down)) { FitAll(IsoLook); Interact(); handled = true; return IntPtr.Zero; }
+                if (ProjHit(_down)) { Ortho = !Ortho; Interact(); handled = true; return IntPtr.Zero; }
+                if (UndoHit(_down)) { UndoHide(); handled = true; return IntPtr.Zero; }
                 int f = HandleAt(_down);
                 if (f >= 0)
                 {
@@ -1415,7 +1446,7 @@ void main(){
             {
                 if (CubeHit(Pt()) is { } cdir2) { CubeClick(cdir2); handled = true; return IntPtr.Zero; }
                 if (ModelHit(Pt()) != null) { handled = true; return IntPtr.Zero; }
-                if (HomeHit(Pt())) { handled = true; return IntPtr.Zero; }
+                if (OverlayButtonHit(Pt())) { handled = true; return IntPtr.Zero; }
                 if (HandleAt(Pt()) >= 0) { handled = true; return IntPtr.Zero; }
                 if (_measureMode) { _down = Pt(); _leftDown = true; handled = true; return IntPtr.Zero; }   // ölçüde çift tık = iki ayrı tık
                 var (id, _) = Pick(Pt());
@@ -1499,12 +1530,14 @@ void main(){
             {
                 int vk = (int)wParam.ToInt64();
                 int n = Palette.All.Length;
-                if (MeasureKey(vk)) { }
+                if (vk == 'Z' && (Win32.GetKeyState(Win32.VK_CONTROL) & 0x8000) != 0) UndoHide();   // Ctrl+Z: son gizlemeyi geri al (pencere odaktayken; Revit'e gitmez)
+                else if (MeasureKey(vk)) { }
                 else if (vk == 'D') ToolKey?.Invoke('D');   // ölç
                 else if (vk == 'T') ToolKey?.Invoke('T');   // anlık etiket
                 else if (vk >= 0x31 && vk < 0x31 + n) PaletteKey?.Invoke(vk - 0x31);
                 else if (vk >= 0x61 && vk < 0x61 + n) PaletteKey?.Invoke(vk - 0x61);
                 else if (vk == 'F') FitSelectionOrAll();
+                else if (vk == 'O') Ortho = !Ortho;   // O: perspektif / ortografik
                 else if (vk == 'H') { if ((Win32.GetKeyState(Win32.VK_SHIFT) & 0x8000) != 0) ShowAllElements(); else if (Selected > 0) HideElement(Selected); }   // H gizle, Shift+H tümünü göster
                 else if (vk == Win32.VK_HOME) FitAll(IsoLook);
                 else if (vk == Win32.VK_ESCAPE) { if (EscapeOverride?.Invoke() != true) Select(0); }

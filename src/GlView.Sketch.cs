@@ -228,7 +228,7 @@ void main(){
         fixed (float* m = mvp) GL.UniformMatrix4fv(idMvp, 1, 1, m);
         UBox(idBoxMin, idBoxMax);
         GL.Uniform1i(idState, 0);
-        GL.Uniform3f(idCam, (float)_pos.X, (float)_pos.Y, (float)_pos.Z);
+        { var ep = EyePos; GL.Uniform3f(idCam, (float)ep.X, (float)ep.Y, (float)ep.Z); }
         GL.Uniform1i(idPass, 0);
         GL.BindVertexArray(_vao);
         GL.BindBuffer(GL.ELEMENT_ARRAY_BUFFER, _iboO);

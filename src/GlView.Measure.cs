@@ -146,6 +146,7 @@ sealed unsafe partial class GlView
     {
         var (n, f) = Planes();
         double zn = 2 * d - 1;
+        if (_ortho) return (zn * (f - n) + (f + n)) / 2;
         return 2 * f * n / ((f + n) - zn * (f - n));
     }
 
@@ -216,7 +217,7 @@ sealed unsafe partial class GlView
         if (best != null) return best;
 
         // 2) kenar üzerindeki en yakın nokta (imleç ışınına en yakın)
-        var ro = _pos;
+        var ro = RayOrigin(p.X, p.Y);
         var rd = RayDir(p.X, p.Y); rd.Normalize();
         if (_edgeIdx != null)
             foreach (var (id, _) in near)
@@ -257,7 +258,7 @@ sealed unsafe partial class GlView
     /// <summary>Kilitli eksen doğrusunun (S + t·ax) imleç ışınına en yakın noktası (yakalama yoksa).</summary>
     Point3D ClosestOnAxis(Point p, Point3D S, Vector3D ax)
     {
-        var o = _pos; var d = RayDir(p.X, p.Y); d.Normalize();
+        var o = RayOrigin(p.X, p.Y); var d = RayDir(p.X, p.Y); d.Normalize();
         var w = S - o;
         double b = Vector3D.DotProduct(ax, d), dd = Vector3D.DotProduct(ax, w), e = Vector3D.DotProduct(d, w);
         double den = 1 - b * b;

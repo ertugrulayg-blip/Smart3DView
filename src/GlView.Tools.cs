@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -102,15 +103,44 @@ sealed unsafe partial class GlView
 
     public void HideElement(uint id)
     {
-        if (_scene == null || id == 0 || !_hiddenElems.Add(Canon(id))) return;
+        if (_scene == null || id == 0 || _hiddenElems.Contains(Canon(id))) return;
+        _hideUndo.Add(_hiddenElems.ToArray());
+        _hiddenElems.Add(Canon(id));
         RefreshHidden();
     }
 
     public void ShowAllElements()
     {
         if (_hiddenElems.Count == 0) return;
+        _hideUndo.Add(_hiddenElems.ToArray());
         _hiddenElems.Clear();
         RefreshHidden();
+    }
+
+    // Gizleme geri alma (Ctrl+Z ya da küpün altındaki "↶ Geri al", kullanıcı isteği 2026-10-16): her gizle / tümünü göster
+    // öncesindeki gizli küme saklanır. Yenile / kutu büyütmede (SetScene) Revit kimliğiyle yeni id'lere taşınır.
+    readonly List<uint[]> _hideUndo = new();
+    public bool CanUndoHide => _hideUndo.Count > 0;
+
+    public void UndoHide()
+    {
+        if (_hideUndo.Count == 0) return;
+        var prev = _hideUndo[^1];
+        _hideUndo.RemoveAt(_hideUndo.Count - 1);
+        _hiddenElems.Clear();
+        foreach (var id in prev) _hiddenElems.Add(id);
+        RefreshHidden();
+    }
+
+    /// <summary>Yeni sahneye geçerken geri alma geçmişini Revit kimliğiyle yeni id'lere taşır (old null ise siler).</summary>
+    void RemapHideUndo(SceneData? old, SceneData scene)
+    {
+        if (old == null || _hideUndo.Count == 0) { _hideUndo.Clear(); return; }
+        var map = new Dictionary<(long, long), uint>();
+        for (int i = 0; i < scene.ElemRevitId.Count; i++) map.TryAdd(ElemKey(scene, i), scene.ElemCanon[i]);
+        for (int k = 0; k < _hideUndo.Count; k++)
+            _hideUndo[k] = _hideUndo[k].Where(id => id > 0 && id <= old.ElemRevitId.Count)
+                .Select(id => map.TryGetValue(ElemKey(old, (int)id - 1), out var n) ? n : 0u).Where(n => n != 0).Distinct().ToArray();
     }
 
     void RefreshHidden()
@@ -264,6 +294,38 @@ sealed unsafe partial class GlView
     // Küpün altında "⌂ 3B": izometrik görünüme dön (tam yüz görünümünde küpte tek yüz kalınca başka yöne geçmek için)
     Rect _homeRect = Rect.Empty;
     bool HomeHit(Point p) => !_homeRect.IsEmpty && _homeRect.Contains(p);
+    Rect _projRect = Rect.Empty, _undoRect = Rect.Empty;
+    bool ProjHit(Point p) => !_projRect.IsEmpty && _projRect.Contains(p);
+    bool UndoHit(Point p) => !_undoRect.IsEmpty && _undoRect.Contains(p);
+    bool OverlayButtonHit(Point p) => HomeHit(p) || ProjHit(p) || UndoHit(p);
+
+    /// <summary>Perspektif ↔ ortografik (kullanıcı isteği 2026-10-16). Ekranın ortasındaki noktada ölçek korunur.</summary>
+    public bool Ortho
+    {
+        get => _ortho;
+        set
+        {
+            if (_ortho == value) return;
+            var (_, hit) = _w > 1 && _h > 1 ? Pick(new Point(_w / 2.0, _h / 2.0)) : (0u, (Point3D?)null);
+            if (value)
+            {
+                double d = hit is { } h ? Math.Max(Vector3D.DotProduct(h - _pos, _look), _radius * 0.002) : _focus;
+                _oh = Math.Max(TanH * d, _radius * 0.001);
+                _ortho = true;
+            }
+            else
+            {
+                var target = hit ?? RayOrigin(_w / 2.0, _h / 2.0) + _look * _focus;
+                double d = _oh / TanH;
+                _ortho = false;
+                _pos = target - _look * d;
+                _focus = d;
+            }
+            Invalidate();
+            ProjectionChanged?.Invoke();
+        }
+    }
+    public event Action? ProjectionChanged;
 
     void CubeClick(Vector3D dir)
     {
@@ -350,6 +412,21 @@ sealed unsafe partial class GlView
             var (_, hw, hh) = LabelTexture(txt, LabelStyle.Tag);
             _homeRect = new Rect(hp.X - hw / 2.0, hp.Y, hw, hh);
             DrawTextAt(new Point(hp.X, hp.Y + hh / 2.0), txt, LabelStyle.Tag, center: true);
+            // altında perspektif / ortografik geçişi, onun altında (varsa) gizlemeyi geri al
+            double y = hp.Y + hh + 4 * Dpi;
+            var ptxt = _ortho ? "▭ " + L.T("Ortografik", "Orthographic") : "◪ " + L.T("Perspektif", "Perspective");
+            var (_, pw, ph) = LabelTexture(ptxt, LabelStyle.Tag);
+            _projRect = new Rect(hp.X - pw / 2.0, y, pw, ph);
+            DrawTextAt(new Point(hp.X, y + ph / 2.0), ptxt, LabelStyle.Tag, center: true);
+            _undoRect = Rect.Empty;
+            if (CanUndoHide)
+            {
+                y += ph + 4 * Dpi;
+                var utxt = "↶ " + L.T("Geri al", "Undo");
+                var (_, uw, uh) = LabelTexture(utxt, LabelStyle.Tag);
+                _undoRect = new Rect(hp.X - uw / 2.0, y, uw, uh);
+                DrawTextAt(new Point(hp.X, y + uh / 2.0), utxt, LabelStyle.Tag, center: true);
+            }
         }
         // yüz adları (yeterince karşıya bakan yüzlerde)
         foreach (var (_, fi) in faces)
