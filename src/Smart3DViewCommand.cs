@@ -23,8 +23,8 @@ public class Smart3DViewCommand : IExternalCommand
         if (box == null)
         {
             TaskDialog.Show(Product.Name, L.T(
-                "Önce eleman seçin, 3B görünümde kesit kutusunu açın ya da plan görünümünde düğmeye basıp bir alan çizin.",
-                "Select elements first, enable the section box in a 3D view, or press the button in a plan view and draw an area."));
+                "Önce eleman seçin, 3B görünümde kesit kutusunu açın, bir kesit görünümüne geçin ya da plan görünümünde düğmeye basıp bir alan çizin.",
+                "Select elements first, enable the section box in a 3D view, switch to a section view, or press the button in a plan view and draw an area."));
             return Result.Cancelled;
         }
 
@@ -54,7 +54,7 @@ static class BoxResolver
 {
     const double Margin = 1.0; // ft ≈ 30 cm — seçimin etrafında bırakılan pay
 
-    /// <summary>Öncelik: seçim → 3B görünümün kesit kutusu → planda çizilen alan. ESC'de OperationCanceledException fırlar.</summary>
+    /// <summary>Öncelik: seçim → 3B görünümün kesit kutusu → kesit/görünüş kırpma kutusu → planda çizilen alan. ESC'de OperationCanceledException fırlar.</summary>
     public static ClipBox? Resolve(UIDocument uidoc)
     {
         var doc = uidoc.Document;
@@ -106,6 +106,9 @@ static class BoxResolver
             return FromLocal(sb.Transform, sb.Min, sb.Max, L.T("3B kesit kutusu", "3D section box"));
         }
 
+        // Kesit / görünüş: seçim istemeden görünümün kırpma kutusu (genişlik × yükseklik × uzak kırpma derinliği) açılır.
+        if (view is ViewSection sec && !sec.IsTemplate && SectionBox(sec) is ClipBox scb) return scb;
+
         if (view is ViewPlan plan)
         {
             var pb = uidoc.Selection.PickBox(PickBoxStyle.Crossing,
@@ -126,6 +129,39 @@ static class BoxResolver
         }
 
         return null;
+    }
+
+    /// <summary>Kesit görünümünün kırpma kutusu. Revit'te kutu yerel Z'si bakana doğru (0 = kesit düzlemi, Min.Z = uzak
+    /// kırpma). ClipBox çerçevesi yalnız Z etrafında dönebildiği için köşeler (kesit yönü, düşey, derinlik) çerçevesine taşınır.</summary>
+    static ClipBox? SectionBox(ViewSection sec)
+    {
+        BoundingBoxXYZ cb;
+        try { cb = sec.CropBox; } catch { return null; }
+        if (cb == null) return null;
+        var t = cb.Transform;
+        var lo = cb.Min; var hi = cb.Max;
+        // Uzak kırpma kapalıysa ya da kutu yok denecek kadar inceyse makul bir derinlik (≈ 6 m) kullan.
+        bool farClip = sec.get_Parameter(BuiltInParameter.VIEWER_BOUND_FAR_CLIPPING)?.AsInteger() is int fc && fc != 0;
+        double depth = hi.Z - lo.Z;
+        if (!farClip || depth < 0.3) lo = new XYZ(lo.X, lo.Y, hi.Z - 20);
+
+        var right = new XYZ(t.BasisX.X, t.BasisX.Y, 0);
+        if (right.GetLength() < 1e-6) right = new XYZ(sec.RightDirection.X, sec.RightDirection.Y, 0);
+        if (right.GetLength() < 1e-6) return null;   // tam yatay kesit: plan gibi; desteklenmiyor
+        right = right.Normalize();
+        var frame = Transform.Identity;
+        frame.BasisX = right; frame.BasisY = XYZ.BasisZ.CrossProduct(right); frame.BasisZ = XYZ.BasisZ;
+        var inv = frame.Inverse;
+        var min = new XYZ(double.MaxValue, double.MaxValue, double.MaxValue);
+        var max = new XYZ(double.MinValue, double.MinValue, double.MinValue);
+        foreach (var c in Corners(lo, hi))
+        {
+            var p = inv.OfPoint(t.OfPoint(c));
+            min = new XYZ(Math.Min(min.X, p.X), Math.Min(min.Y, p.Y), Math.Min(min.Z, p.Z));
+            max = new XYZ(Math.Max(max.X, p.X), Math.Max(max.Y, p.Y), Math.Max(max.Z, p.Z));
+        }
+        return FromLocal(frame, min, max,
+            sec.ViewType == ViewType.Elevation ? L.T("görünüş", "elevation") : L.T("kesit", "section"));
     }
 
     const double AskAboveSide = 6000 / 304.8; // ft — seçim alanının bir kenarı bundan uzunsa kat dışı sorulur

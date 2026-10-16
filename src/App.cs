@@ -18,8 +18,8 @@ public class App : IExternalApplication
         var button = new PushButtonData("Smart3DView", "Smart\n3D View", dll, typeof(Smart3DViewCommand).FullName)
         {
             ToolTip = L.T(
-                "Seçili elemanların (ya da 3B kesit kutusunun / planda çizilen alanın) çevresini ayrı bir pencerede gri tonlu 3B olarak açar.",
-                "Opens the area around the selected elements (or the 3D section box / a box drawn in plan) as a grayscale 3D view in a separate window.")
+                "Seçili elemanların (ya da 3B kesit kutusunun / kesit görünümünün / planda çizilen alanın) çevresini ayrı bir pencerede gri tonlu 3B olarak açar.",
+                "Opens the area around the selected elements (or the 3D section box / the section view / a box drawn in plan) as a grayscale 3D view in a separate window.")
                 + "\n\n" + L.T("Sürüm: ", "Version: ") + AddinVersion.Text,
             LargeImage = Icons.Cube(32),
             Image = Icons.Cube(16),
