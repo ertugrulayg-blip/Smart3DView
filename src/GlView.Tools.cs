@@ -109,6 +109,38 @@ sealed unsafe partial class GlView
         RefreshHidden();
     }
 
+    // Benzerlerini gizle (kullanıcı isteği 2026-10-22: "hide similar, aynı kategorideki elementleri kapatsın"): tıklanan elemanın
+    // (izolasyonsa taşıdığı borunun) kategorisindeki tüm elemanlar, bütün modellerde. Tek geri alma adımı.
+    public int CountSimilar(uint id)
+    {
+        if (_scene == null || id == 0 || id > _scene.ElemCat.Count) return 0;
+        ushort cat = _scene.ElemCat[(int)Canon(id) - 1];
+        int n = 0;
+        for (int i = 0; i < _scene.ElemCat.Count; i++)
+            if (_scene.ElemCat[i] == cat && _scene.ElemCanon[i] == i + 1 && !_hiddenElems.Contains((uint)i + 1)) n++;
+        return n;
+    }
+
+    public void HideSimilar(uint id)
+    {
+        if (_scene == null || id == 0 || id > _scene.ElemCat.Count) return;
+        ushort cat = _scene.ElemCat[(int)Canon(id) - 1];
+        var before = _hiddenElems.ToArray();
+        int n0 = _hiddenElems.Count;
+        for (int i = 0; i < _scene.ElemCat.Count; i++)
+            if (_scene.ElemCat[i] == cat) _hiddenElems.Add(_scene.ElemCanon[i]);
+        if (_hiddenElems.Count == n0) return;
+        _hideUndo.Add(before);
+        RefreshHidden();
+    }
+
+    public string CategoryName(uint id)
+    {
+        if (_scene == null || id == 0 || id > _scene.ElemCat.Count) return "";
+        int c = _scene.ElemCat[(int)Canon(id) - 1];
+        return c < _scene.CatNames.Count ? _scene.CatNames[c] : "";
+    }
+
     public void ShowAllElements()
     {
         if (_hiddenElems.Count == 0) return;

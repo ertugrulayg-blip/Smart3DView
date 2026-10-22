@@ -1538,7 +1538,12 @@ void main(){
                 else if (vk >= 0x61 && vk < 0x61 + n) PaletteKey?.Invoke(vk - 0x61);
                 else if (vk == 'F') FitSelectionOrAll();
                 else if (vk == 'O') Ortho = !Ortho;   // O: perspektif / ortografik
-                else if (vk == 'H') { if ((Win32.GetKeyState(Win32.VK_SHIFT) & 0x8000) != 0) ShowAllElements(); else if (Selected > 0) HideElement(Selected); }   // H gizle, Shift+H tümünü göster
+                else if (vk == 'H')   // H gizle, Ctrl+H benzerlerini (aynı kategori) gizle, Shift+H tümünü göster
+                {
+                    if ((Win32.GetKeyState(Win32.VK_SHIFT) & 0x8000) != 0) ShowAllElements();
+                    else if (Selected > 0 && (Win32.GetKeyState(Win32.VK_CONTROL) & 0x8000) != 0) HideSimilar(Selected);
+                    else if (Selected > 0) HideElement(Selected);
+                }
                 else if (vk == Win32.VK_HOME) FitAll(IsoLook);
                 else if (vk == Win32.VK_ESCAPE) { if (EscapeOverride?.Invoke() != true) Select(0); }
                 else if (vk is 'C' or 'B' or 'M' or 'P' or 'R') ToolKey?.Invoke((char)vk);

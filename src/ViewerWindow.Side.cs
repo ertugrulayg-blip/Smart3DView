@@ -45,12 +45,22 @@ sealed partial class ViewerWindow
         var menu = new ContextMenu();
         var hide = new MenuItem { Header = L.T("Gizle", "Hide"), InputGestureText = "H", IsEnabled = id != 0 };
         hide.Click += (_, _) => _view.HideElement(id);
+        string cat = _view.CategoryName(id);
+        int similar = _view.CountSimilar(id);
+        var hideSim = new MenuItem
+        {
+            Header = cat.Length > 0 ? L.T($"Benzerlerini gizle — {cat} ({similar})", $"Hide similar — {cat} ({similar})") : L.T("Benzerlerini gizle", "Hide similar"),
+            InputGestureText = "Ctrl+H", IsEnabled = similar > 0,
+            ToolTip = L.T("Aynı kategorideki tüm elemanları gizler (bütün modellerde)", "Hides every element of the same category (in all models)")
+        };
+        hideSim.Click += (_, _) => _view.HideSimilar(id);
         int n = _view.HiddenElementCount;
         var show = new MenuItem { Header = L.T($"Tümünü göster ({n})", $"Show all ({n})"), InputGestureText = "Shift+H", IsEnabled = n > 0 };
         show.Click += (_, _) => _view.ShowAllElements();
         var undo = new MenuItem { Header = L.T("Gizlemeyi geri al", "Undo hide"), InputGestureText = "Ctrl+Z", IsEnabled = _view.CanUndoHide };
         undo.Click += (_, _) => _view.UndoHide();
         menu.Items.Add(hide);
+        menu.Items.Add(hideSim);
         menu.Items.Add(show);
         menu.Items.Add(undo);
         var dpi = VisualTreeHelper.GetDpi(_view);
