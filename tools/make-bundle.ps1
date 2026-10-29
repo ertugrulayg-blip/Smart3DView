@@ -79,11 +79,14 @@ $pkg = @"
 <ApplicationPackage SchemaVersion="1.0" AutodeskProduct="Revit" ProductType="Application" Name="$appName"
     AppVersion="$ver" ProductCode="$product" UpgradeCode="$upgrade" Author="SchemaTools"
     Description="Fast 3D section box viewer for Revit in its own window: grayscale tones, colored MEP systems, clash detection and pictures to Revit"
-    HelpFile="./Contents/Help/index.html" OnlineDocumentation="https://schema-tools.net/smart3dview/help/">
+    HelpFile="./Contents/Help/index.html" OnlineDocumentation="https://schema-tools.net/smart3dview/help/" Icon="./Contents/Resources/icon.png">
   <CompanyDetails Name="SchemaTools" Url="https://schema-tools.net" Email="schematoolssupp@outlook.com" />
 $comps</ApplicationPackage>
 "@
 [IO.File]::WriteAllText((Join-Path $bundle "PackageContents.xml"), $pkg, $utf8)
+# Uygulamanın kendi ikonu (Autodesk: Revit logosu kullanılmaz)
+New-Item -ItemType Directory -Force (Join-Path $bundle "Contents\Resources") | Out-Null
+Copy-Item (Join-Path $root "store\icon-120.png") (Join-Path $bundle "Contents\Resources\icon.png")
 Copy-Item $help (Join-Path $stage "Smart3DView-Help.html")
 
 if (Test-Path $zip) { Remove-Item $zip -Force }

@@ -49,7 +49,7 @@ static class WebExport
     {
         var w = new Window
         {
-            Title = Product.Name + " — " + L.T("Web'e aktar: modeller", "Export to web: models"),
+            Title = Product.Name + " — " + L.T("Web'e aktar: modeller", "Export to web: models"), Icon = Icons.Globe(32),
             SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false,
             WindowStartupLocation = ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
         };
@@ -110,7 +110,7 @@ static class WebExport
         LocalServer.OpenInBrowser(path);
         var w = new Window
         {
-            Title = L.T("Web'e aktarıldı", "Exported to web"), SizeToContent = SizeToContent.WidthAndHeight,
+            Title = L.T("Web'e aktarıldı", "Exported to web"), Icon = Icons.Globe(32), SizeToContent = SizeToContent.WidthAndHeight,
             ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false,
             WindowStartupLocation = owner != null || ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
         };
@@ -161,6 +161,7 @@ sealed class ExportProgressWindow : Window
     {
         _ctl = ctl;
         Title = Product.Name + " — " + L.T("Web'e aktar", "Export to web");
+        Icon = Icons.Globe(32);
         SizeToContent = SizeToContent.WidthAndHeight;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;

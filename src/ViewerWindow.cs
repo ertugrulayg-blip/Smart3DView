@@ -110,6 +110,7 @@ sealed partial class ViewerWindow : Window
     ViewerWindow()
     {
         Width = 1100; Height = 760;
+        Icon = Icons.Cube(32);   // başlık / görev çubuğunda Revit logosu değil kendi ikonumuz (Autodesk mağaza şartı)
         MinWidth = 560; MinHeight = 300;
         FontFamily = new FontFamily("Segoe UI");
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -531,7 +532,7 @@ sealed partial class ViewerWindow : Window
     {
         var w = new Window
         {
-            Title = L.T("Görüntü kaydedildi", "Picture saved"), Owner = this, SizeToContent = SizeToContent.WidthAndHeight,
+            Title = L.T("Görüntü kaydedildi", "Picture saved"), Icon = Icons.Cube(32), Owner = this, SizeToContent = SizeToContent.WidthAndHeight,
             ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false,
         };
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14), MaxWidth = 560 };

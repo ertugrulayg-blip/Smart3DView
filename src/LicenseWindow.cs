@@ -21,6 +21,7 @@ sealed class LicenseWindow : Window
     public LicenseWindow(Window? owner, string? reason)
     {
         Title = Product.Name + L.T(" lisansı", " license");
+        Icon = Icons.Cube(32);   // başlık / görev çubuğunda Revit logosu değil kendi ikonumuz (Autodesk mağaza şartı)
         Width = 470; SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
