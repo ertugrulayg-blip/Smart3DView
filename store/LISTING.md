@@ -3,7 +3,7 @@
 Form: Desktop-based App · Win64 · English. Dosyalar:
 - App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.25.2-store.zip` (2026-10-30: "Export GLB" mağazada da var; mağaza derlemesi `-p:Store=true` = aktarımdan sonra tarayıcı kendiliğinden açılmaz, "View in browser" düğmesi) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
-- Command icons: Smart 3D View → `storeibbon-32.png`; Export GLB → `storeibbon-glb-32.png` (16 px ve 128 px kopyaları da var; ribbon çiziminden, `Icons.Globe`)
+- Command icons: Smart 3D View → `store/ribbon-32.png`; Export GLB → `store/ribbon-glb-32.png` (16 px ve 128 px kopyaları da var; ribbon çiziminden, `Icons.Globe`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
 ---
