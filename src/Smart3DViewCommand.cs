@@ -22,9 +22,10 @@ public class Smart3DViewCommand : IExternalCommand
 
         if (box == null)
         {
-            TaskDialog.Show(Product.Name, L.T(
-                "Önce eleman seçin, 3B görünümde kesit kutusunu açın, bir kesit görünümüne geçin ya da plan görünümünde düğmeye basıp bir alan çizin.",
-                "Select elements first, enable the section box in a 3D view, switch to a section view, or press the button in a plan view and draw an area."));
+            // Pencere yerine imlecin yanında birkaç saniyelik ipucu: kapatmak gerekmez (kullanıcı isteği 2026-10-30).
+            CursorHint.Flash(L.T(
+                "Önce bir alan seçin: eleman seçin, 3B'de kesit kutusunu açın ya da planda / kesitte düğmeye basın.",
+                "Pick an area first: select elements, turn on the section box in 3D, or press the button in a plan or section."), 5);
             return Result.Cancelled;
         }
 
@@ -111,8 +112,11 @@ static class BoxResolver
 
         if (view is ViewPlan plan)
         {
-            var pb = uidoc.Selection.PickBox(PickBoxStyle.Crossing,
-                Product.Name + L.T(": açılacak alanı çizin", ": drag the area to open"));
+            PickedBox pb;
+            // Revit bunu yalnız sol alttaki durum çubuğuna yazıyor, gözden kaçıyor → imlecin yanında da göster (2026-10-30).
+            using (CursorHint.While(L.T("Açılacak alanı seçin: dikdörtgen çizin  ·  Esc: vazgeç", "Pick the area to open: drag a rectangle  ·  Esc: cancel")))
+                pb = uidoc.Selection.PickBox(PickBoxStyle.Crossing,
+                    Product.Name + L.T(": açılacak alanı çizin", ": drag the area to open"));
             // Görünüm döndürülmüş olabilir: dikdörtgen ekrana hizalı, o yüzden görünümün sağ/yukarı eksenlerinde çalış.
             var right = new XYZ(view.RightDirection.X, view.RightDirection.Y, 0).Normalize();
             var up = XYZ.BasisZ.CrossProduct(right);
