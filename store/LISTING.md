@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.25.0-store.zip` (2026-10-30: "Export GLB" mağazada da var; mağaza derlemesi `-p:Store=true` = aktarımdan sonra tarayıcı kendiliğinden açılmaz, "View in browser" düğmesi) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.25.2-store.zip` (2026-10-30: "Export GLB" mağazada da var; mağaza derlemesi `-p:Store=true` = aktarımdan sonra tarayıcı kendiliğinden açılmaz, "View in browser" düğmesi) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -68,8 +68,8 @@ Every feature is available for 14 days. After the trial, grayscale 3D viewing re
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.25.0
-- Version Description: Supports Revit 2025, 2026 and 2027. New in 1.25: Export GLB (whole model with chosen links, or the current 3D window, to a standard .glb/glTF file); every window uses the Smart3DView icon; F1 opens the Smart3DView help in every window. Earlier: Paper tone is now a hand-drawn pencil sketch (all edges and cut faces outlined); Colored mode gives each model its own pastel color with a legend; large section boxes are read in slices with progress and Esc to cancel; Box, Measure and Clash options open as floating strips above the toolbar; the Black tone was removed. Also includes Detailed color mode, clash tolerance, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube and live tags.
+- Version Number: 1.25.2
+- Version Description: Supports Revit 2025, 2026 and 2027. New in 1.25: Export GLB (whole model with chosen links, or the current 3D window, to a standard .glb/glTF file); a small hint next to the cursor when no area is selected (instead of a dialog); every window uses the Smart3DView icon; F1 opens the Smart3DView help in every window. Earlier: Paper tone is now a hand-drawn pencil sketch (all edges and cut faces outlined); Colored mode gives each model its own pastel color with a legend; large section boxes are read in slices with progress and Esc to cancel; Box, Measure and Clash options open as floating strips above the toolbar; the Black tone was removed. Also includes Detailed color mode, clash tolerance, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube and live tags.
 
 ## Commands (Add Commands)
 - Command: **Smart 3D View** — Ribbon: Add-Ins tab → Smart3DView panel.
