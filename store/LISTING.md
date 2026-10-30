@@ -50,7 +50,7 @@ A view cube in the corner gives exact top, front, side and corner views. Tag mod
 Drag the face handles to shrink or grow the box, or move the whole box along an axis. Cutting happens on the graphics card, so changes are instant. Growing the box reads only the newly included elements from Revit. Cable trays are shown at Fine detail.
 
 **Export GLB**
-Save the whole model (with the linked models you choose, from the ribbon button) or just what is open in the 3D window as a .glb (glTF) file — a standard 3D format that opens in any glTF viewer. The file stays on your computer. Optionally click View in browser to open it in Smart3DView Web, our free browser viewer: it runs locally in your browser and never uploads the file.
+Save the whole model (with the linked models you choose, from the ribbon button) or just what is open in the 3D window as a .glb (glTF) file — a standard 3D format that opens in any glTF viewer. To export only a specific area, open it with Smart3DView (adjust the box if needed) and click Export GLB in the 3D window. The file stays on your computer. Optionally click View in browser to open it in Smart3DView Web, our free browser viewer: it runs locally in your browser and never uploads the file.
 
 **Take picture**
 Saves a high-resolution image (about 4K) of the current view into your model under Project Browser → Renderings, ready to place on sheets, and as a PNG file. A small window shows the picture and opens the file or its folder.
