@@ -225,7 +225,7 @@ sealed partial class ViewerWindow : Window
         LocationChanged += (_, _) => RepositionFlyouts();
         SizeChanged += (_, _) => RepositionFlyouts();
         StateChanged += (_, _) => RefreshFlyouts();
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.F1) { Help.Open(); e.Handled = true; } };
+        Help.Attach(this);
         Action licChanged = () => Dispatcher.BeginInvoke(RefreshTools);
         Action<object, IReadOnlyCollection<long>> modelChanged = (doc, ids) => Dispatcher.BeginInvoke(() =>
         {
@@ -535,6 +535,7 @@ sealed partial class ViewerWindow : Window
             Title = L.T("Görüntü kaydedildi", "Picture saved"), Icon = Icons.Cube(32), Owner = this, SizeToContent = SizeToContent.WidthAndHeight,
             ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, ShowInTaskbar = false,
         };
+        Help.Attach(w);
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14), MaxWidth = 560 };
         try
         {

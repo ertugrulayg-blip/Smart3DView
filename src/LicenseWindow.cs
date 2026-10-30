@@ -26,6 +26,7 @@ sealed class LicenseWindow : Window
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
         if (owner != null) Owner = owner;
+        Help.Attach(this);
         FontFamily = new FontFamily("Segoe UI");
         Background = Brushes.White;
 

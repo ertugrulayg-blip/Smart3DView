@@ -54,6 +54,7 @@ static class WebExport
             WindowStartupLocation = ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
         };
         if (ownerHwnd != IntPtr.Zero) new WindowInteropHelper(w).Owner = ownerHwnd;
+        Help.Attach(w);
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14), MinWidth = 380, MaxWidth = 620 };
         stack.Children.Add(new TextBlock
         {
@@ -116,6 +117,7 @@ static class WebExport
         };
         if (owner != null) w.Owner = owner;
         else if (ownerHwnd != IntPtr.Zero) new WindowInteropHelper(w).Owner = ownerHwnd;
+        Help.Attach(w);
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14), MaxWidth = 560 };
         void Line(string t, bool bold = false) => stack.Children.Add(new TextBlock
         {
@@ -167,6 +169,7 @@ sealed class ExportProgressWindow : Window
         ShowInTaskbar = false;
         WindowStartupLocation = ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
         if (ownerHwnd != IntPtr.Zero) new WindowInteropHelper(this).Owner = ownerHwnd;
+        Help.Attach(this);
         var cancel = new Button { Content = L.T("İptal (Esc)", "Cancel (Esc)"), Padding = new Thickness(12, 4, 12, 4), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0), IsCancel = true };
         cancel.Click += (_, _) => Cancel();
         var stack = new StackPanel { Margin = new Thickness(18, 14, 18, 14) };

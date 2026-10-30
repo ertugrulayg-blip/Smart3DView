@@ -22,6 +22,20 @@ static class Help
         }
     }
 
+    /// <summary>Penceremizde F1 bizim yardımımızı açar. Karşılanmayan F1, Windows'ta WM_HELP olarak sahip pencereye (Revit)
+    /// gider ve Revit kendi yardımını açar (2026-10-30: "Web'e aktar" penceresinde görüldü).</summary>
+    public static void Attach(System.Windows.Window w)
+    {
+        w.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.F1) { Open(); e.Handled = true; } };
+        w.SourceInitialized += (_, _) =>
+            System.Windows.Interop.HwndSource.FromHwnd(new System.Windows.Interop.WindowInteropHelper(w).Handle)?.AddHook(
+                (IntPtr h, int msg, IntPtr wp, IntPtr lp, ref bool handled) =>
+                {
+                    if (msg == 0x0053) handled = true;   // WM_HELP: Revit'e iletilmesin (yardımı PreviewKeyDown açtı)
+                    return IntPtr.Zero;
+                });
+    }
+
     /// <summary>Yerel kopya varsa onu (internetsiz de çalışır), yoksa çevrimiçi sayfayı varsayılan tarayıcıda açar.</summary>
     public static void Open()
     {
