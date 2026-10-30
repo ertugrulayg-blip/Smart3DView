@@ -1,7 +1,7 @@
 # Smart3DView — Autodesk App Store (Design and Make Marketplace) form metinleri
 
 Form: Desktop-based App · Win64 · English. Dosyalar:
-- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.16.2-store.zip` (Web'e aktar YOK: mağaza derlemesi `-p:Store=true`) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
+- App File: `out\Smart3DView-<sürüm>-store.zip` — şu an `out\Smart3DView-1.25.0-store.zip` (2026-10-30: "Export GLB" mağazada da var; mağaza derlemesi `-p:Store=true` = aktarımdan sonra tarayıcı kendiliğinden açılmaz, "View in browser" düğmesi) (`tools\make-bundle.ps1` üretir; `out\Smart3DView-<sürüm>.zip` site indirmesidir, mağazaya YÜKLEME; Smart3DView.bundle + PackageContents.xml + Smart3DView-Help.html)
 - App Icon: `store\icon-120.png` (büyük kopya `store\icon-512.png`)
 - Screenshots: gerçek Revit modelinden alınacak (her biri ≤ 2 MB, png/jpg)
 
@@ -49,6 +49,9 @@ A view cube in the corner gives exact top, front, side and corner views. Tag mod
 **Live section box**
 Drag the face handles to shrink or grow the box, or move the whole box along an axis. Cutting happens on the graphics card, so changes are instant. Growing the box reads only the newly included elements from Revit. Cable trays are shown at Fine detail.
 
+**Export GLB**
+Save the whole model (with the linked models you choose, from the ribbon button) or just what is open in the 3D window as a .glb (glTF) file — a standard 3D format that opens in any glTF viewer. The file stays on your computer. Optionally click View in browser to open it in Smart3DView Web, our free browser viewer: it runs locally in your browser and never uploads the file.
+
 **Take picture**
 Saves a high-resolution image (about 4K) of the current view into your model under Project Browser → Renderings, ready to place on sheets, and as a PNG file. A small window shows the picture and opens the file or its folder.
 
@@ -59,18 +62,20 @@ Geometry is uploaded to the GPU once; navigation stays smooth even on integrated
 Shift + middle mouse to orbit (around the selected element), middle mouse to pan, wheel to zoom towards the cursor, double-click or F to fit.
 
 **Trial and license**
-Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored and Detailed modes, Clash detection, 3D measuring, Take picture and Box editing.
+Every feature is available for 14 days. After the trial, grayscale 3D viewing remains free forever. A one-time full license (USD 4, two computers, no subscription) unlocks Colored and Detailed modes, Clash detection, 3D measuring, Take picture, Export GLB and Box editing.
 
 ## Publisher Privacy Policy
 https://schema-tools.net/privacy-policy.html
 
 ## App Version
-- Version Number: 1.16.2
-- Version Description: Supports Revit 2025, 2026 and 2027. New: Paper tone is now a hand-drawn pencil sketch (all edges and cut faces outlined); Colored mode gives each model its own pastel color with a legend; large section boxes are read in slices with progress and Esc to cancel; Box, Measure and Clash options open as floating strips above the toolbar; the Black tone was removed. Also includes Detailed color mode, clash tolerance, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube and live tags.
+- Version Number: 1.25.0
+- Version Description: Supports Revit 2025, 2026 and 2027. New in 1.25: Export GLB (whole model with chosen links, or the current 3D window, to a standard .glb/glTF file); every window uses the Smart3DView icon; F1 opens the Smart3DView help in every window. Earlier: Paper tone is now a hand-drawn pencil sketch (all edges and cut faces outlined); Colored mode gives each model its own pastel color with a legend; large section boxes are read in slices with progress and Esc to cancel; Box, Measure and Clash options open as floating strips above the toolbar; the Black tone was removed. Also includes Detailed color mode, clash tolerance, reload (R / F5), multiple windows, 3D measuring with snapping and X/Y/Z lock, model visibility list, Show in Revit, view cube and live tags.
 
 ## Commands (Add Commands)
 - Command: **Smart 3D View** — Ribbon: Add-Ins tab → Smart3DView panel.
   Description: Opens the selected elements, the active 3D section box, or an area dragged in a plan view in the Smart3DView 3D window. Press F1 on the button for help.
+- Command: **Export GLB** — Ribbon: Add-Ins tab → Smart3DView panel.
+  Description: Exports the whole model, with the linked models you choose, to a single .glb (glTF) file on your computer; open it in any glTF viewer or in Smart3DView Web. Esc cancels. Press F1 on the button for help.
 
 ## General Usage Instructions
 1. In Revit open the Add-Ins tab and click Smart 3D View in the Smart3DView panel.
@@ -83,7 +88,8 @@ https://schema-tools.net/privacy-policy.html
 8. Models (top left): click the host or a linked model to hide or show it. Show in Revit selects the clicked element in Revit. Tag (T) shows category and type on hover; the view cube at the top right sets exact views.
 9. Reload (R / F5) reads changes from Revit and keeps your view. Clicking Smart 3D View again opens another window.
 10. Take picture (P): the view is saved into the model under Project Browser → Renderings.
-11. Help: F1 or the ? button. The license window opens from the Trial / Free version button.
+11. Export GLB: the Export GLB button on the ribbon saves the whole model (pick the linked models to include); the button in the 3D window saves what is open there. When it finishes, Open folder shows the file and View in browser opens it in Smart3DView Web.
+12. Help: F1 or the ? button. The license window opens from the Trial / Free version button.
 
 ## Installation/Uninstallation
 The installer copies Smart3DView to the ApplicationPlugins folder (%APPDATA%\Autodesk\ApplicationPlugins\Smart3DView.bundle). Restart Revit after installing; the Smart3DView panel appears on the Add-Ins tab. No other setup is needed — the 14-day trial starts on first use.
@@ -96,7 +102,7 @@ Support: schematoolssupp@outlook.com or https://schema-tools.net/contact.html. W
 - Compatible with Revit 2025, 2026 and 2027 (Windows 64-bit). The compatibility list in the submission form only offers versions up to 2016, so 2016 was selected only to place the app in the Revit store; the package (PackageContents.xml) targets R2025, R2026 and R2027.
 - Requires a graphics card with OpenGL 3.3 (any GPU from the last decade, including integrated graphics).
 - User interface in English and Turkish (follows the Windows language).
-- Privacy: everything runs on your computer; the model is never uploaded. License activation and an approximately weekly check contact Polar (api.polar.sh) with the license key and an anonymous device code only.
+- Privacy: everything runs on your computer; the model is never uploaded. License activation and an approximately weekly check contact Polar (api.polar.sh) with the license key and an anonymous device code only. Export GLB writes the file to your computer only; View in browser hands it to the Smart3DView Web page through a local connection on your computer, without uploading it.
 - Pictures are also kept as PNG files in %LOCALAPPDATA%\Smart3DView\images.
 - Quick start and help: https://schema-tools.net/smart3dview/help/
 

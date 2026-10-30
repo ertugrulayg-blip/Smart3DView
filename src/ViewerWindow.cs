@@ -78,7 +78,7 @@ sealed partial class ViewerWindow : Window
     readonly StackPanel _swatches = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _btnLic, _btnReload, _btnBox, _btnMove, _btnReset, _btnMeasure, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear, _btnClash, _btnTol, _btnWeb, _btnShot, _btnHelp;
 #if !STORE
-    Border _clashWebHint = null!;   // çakışma açıkken Web'e aktar düğmesinin üstünde (kullanıcı 2026-10-09)
+    Border _clashWebHint = null!;   // çakışma açıkken GLB'ye aktar düğmesinin üstünde (kullanıcı 2026-10-09)
 #endif
     // Çakışma toleransı (mm): yalnız birbirinin içine bundan derin giren elemanlar çakışır; 0 = dokunma da sayılır.
     static readonly int[] TolSteps = { 5, 10, 25, 50, 0 };
@@ -145,31 +145,27 @@ sealed partial class ViewerWindow : Window
                 "Show clashing elements between different services in red/blue — overlaps below the tolerance and touching elements are ignored, as are parts of the same run  (C)"), () => _ = ToggleClash());
         _btnTol = MakeTool("", L.T("Çakışma toleransı: elemanlar birbirinin içine bundan fazla girerse çakışma sayılır — değen, yaslanan, üstüne oturan elemanlar sayılmaz. Tıkla: 5 → 10 → 25 → 50 mm → dokunma da sayılsın",
                                   "Clash tolerance: elements count as clashing only if they overlap by more than this — touching, resting or mounted elements are ignored. Click: 5 → 10 → 25 → 50 mm → touching counts too"), CycleTol);
-        _btnWeb = MakeTool("🌐  " + L.T("Web'e aktar", "Export to web"),
-            L.T("Bu pencerede açık olanı (gizlenen modeller hariç) .glb dosyasına kaydeder; Smart3DView Web ile tarayıcıda açılır. Tüm model için Revit şeridindeki \"Web'e aktar\" düğmesi.",
-                "Saves what is open in this window (hidden models excluded) to a .glb file to open in the browser with Smart3DView Web. For the whole model use \"Export to web\" on the Revit ribbon."), () => _ = ExportCurrent());
+        _btnWeb = MakeTool("🌐  " + L.T("GLB'ye aktar", "Export GLB"),
+            L.T("Bu pencerede açık olanı (gizlenen modeller hariç) standart .glb (glTF) dosyasına kaydeder; herhangi bir glTF görüntüleyicide ya da tarayıcıda Smart3DView Web ile açılır. Tüm model için Revit şeridindeki \"GLB'ye aktar\" düğmesi.",
+                "Saves what is open in this window (hidden models excluded) to a standard .glb (glTF) file; open it in any glTF viewer or in the browser with Smart3DView Web. For the whole model use \"Export GLB\" on the Revit ribbon."), () => _ = ExportCurrent());
         _btnShot = MakeTool("📷  " + L.T("Görüntü al", "Take picture"),
             L.T("Görüntüyü yüksek çözünürlükte Revit'e kaydet (Proje Tarayıcısı → Renderings)  (P)",
                 "Save the view in high resolution to Revit (Project Browser → Renderings)  (P)"), TakePicture);
         _btnLic = MakeTool("", L.T("Lisans durumu / satın al", "License status / buy"), () => ShowLicense(null));
         _btnHelp = MakeTool("?", L.T("Hızlı başlangıç ve yardım  (F1)", "Quick start and help  (F1)"), Help.Open);
-#if STORE   // Autodesk mağaza paketinde "Web'e aktar" yok (açıklamada yer almıyor)
-        foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnShot, _btnHelp }) _tools.Children.Add(b);
-#else
         foreach (var b in new[] { _btnLic, _btnReload, _btnBox, _btnMeasure, _btnClash, _btnWeb, _btnShot, _btnHelp }) _tools.Children.Add(b);
-#endif
         // Alt düğmeler çubuğa eklenmez: ana düğmenin ÜSTÜNDE ayrı bir şerit olarak açılır (kullanıcı isteği 2026-10-08).
         _flyouts.Add(MakeFlyout(_btnReload, () => _host != null, _btnAuto, _btnManual));   // hep açık: otomatik / elle
         _flyouts.Add(MakeFlyout(_btnBox, () => _view.BoxMode, _btnMove, _btnReset));
         _flyouts.Add(MakeFlyout(_btnMeasure, () => _view.MeasureMode, _btnLockX, _btnLockY, _btnLockZ, _btnFree, _btnClear));
         _flyouts.Add(MakeFlyout(_btnClash, () => _clashOn, _btnTol));
 #if !STORE
-        // Çakışma açık kaldıkça sol altta, durum yazısının hemen üstünde sarı kısa ipucu (tıklanınca Web'e aktarır).
-        // Eskiden Web'e aktar düğmesinin üstünde, tolerans şeridinin de üstünde havada duruyordu (kullanıcı 2026-10-16:
+        // Çakışma açık kaldıkça sol altta, durum yazısının hemen üstünde sarı kısa ipucu (tıklanınca GLB'ye aktarır).
+        // Eskiden GLB'ye aktar düğmesinin üstünde, tolerans şeridinin de üstünde havada duruyordu (kullanıcı 2026-10-16:
         // "çok yukarda ve anlamsız duruyor, sol altta kontrol yazısının üstünde sarı yazabilir").
-        _clashWebHint = MakeTool(L.T("Ayrıntılı çakışma raporu için: Web'e aktar ↗", "Detailed clash report: Export to web ↗"),
-            L.T("Çakışmaları gruplandırılmış olarak görmek ve rapor almak için Web'e aktar'ı kullanın.",
-                "Use Export to web to see the clashes grouped and get a report."), () => _ = ExportCurrent());
+        _clashWebHint = MakeTool(L.T("Ayrıntılı çakışma raporu için: GLB'ye aktar, Smart3DView Web'de aç ↗", "Detailed clash report: Export GLB, open in Smart3DView Web ↗"),
+            L.T("Çakışmaları gruplandırılmış olarak görmek ve rapor almak için GLB'ye aktarıp tarayıcıda Smart3DView Web ile açın.",
+                "Export GLB and open it in the browser with Smart3DView Web to see the clashes grouped and get a report."), () => _ = ExportCurrent());
         var hintFly = MakeFlyout(_bar, () => _clashOn, _clashWebHint);
         hintFly.AlignLeft = true; hintFly.Plain = true;
         _flyouts.Add(hintFly);
@@ -509,11 +505,11 @@ sealed partial class ViewerWindow : Window
 
     /// <summary>Görüntünün nereye kaydedildiğini açıkça gösterir (kullanıcı geri bildirimi, 2026-10-07: "fotoğraf
     /// çekiyor mu bilmiyorum, nereye atıyor göremiyorum"): Revit'teki yeri + PNG dosyası, aç / klasörü aç düğmeleri.</summary>
-    /// <summary>Web'e aktar: yalnız bu pencerede açık olan (kullanıcı isteği 2026-10-08); sol üstte gizlenen modeller
+    /// <summary>GLB'ye aktar: yalnız bu pencerede açık olan (kullanıcı isteği 2026-10-08); sol üstte gizlenen modeller
     /// dahil edilmez. Revit'e dokunmaz — okunmuş sahne doğrudan yazılır.</summary>
     async Task ExportCurrent()
     {
-        if (_scene == null || !RequireFull(L.T("Web'e aktar", "Export to web"))) return;
+        if (_scene == null || !RequireFull(L.T("GLB'ye aktar", "Export GLB"))) return;
         string? path = WebExport.AskPath(this, _docTitle + " - 3D");
         if (path == null) { _view.FocusGl(); return; }
         var s = _scene;
@@ -524,7 +520,7 @@ sealed partial class ViewerWindow : Window
         Flash(L.T("Dosya yazılıyor…", "Writing the file…"));
         try { await WebExport.Write(s, path, Include, _view.BoxMin, _view.BoxMax); }   // kesit kutusu da gider
         catch (Exception ex) { Flash(L.T("Dosya yazılamadı: ", "Could not write the file: ") + ex.Message); return; }
-        Flash(L.T("Web'e aktarıldı: ", "Exported to web: ") + Path.GetFileName(path));
+        Flash(L.T("GLB'ye aktarıldı: ", "Exported to GLB: ") + Path.GetFileName(path));
         WebExport.ShowSaved(this, IntPtr.Zero, path, count);
     }
 

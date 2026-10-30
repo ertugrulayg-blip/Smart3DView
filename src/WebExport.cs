@@ -10,7 +10,7 @@ using System.Windows.Interop;
 
 namespace Smart3DView;
 
-/// <summary>Web'e aktarma (Smart3DView Web, kullanıcı isteği 2026-10-08): dosya yeri sorma, .glb yazma ve "kaydedildi"
+/// <summary>GLB'ye aktarma (Smart3DView Web, kullanıcı isteği 2026-10-08): dosya yeri sorma, .glb yazma ve "kaydedildi"
 /// penceresi. Hem şerit düğmesi (tüm model) hem 3B penceredeki düğme (açık görünüm) kullanır. Revit'e bağlı değildir.</summary>
 static class WebExport
 {
@@ -32,7 +32,7 @@ static class WebExport
         if (name.EndsWith(".rvt", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            Title = L.T("Web'e aktar — .glb dosyasını kaydet", "Export to web — save the .glb file"),
+            Title = L.T("GLB'ye aktar — .glb dosyasını kaydet", "Export GLB — save the .glb file"),
             Filter = L.T("3B model (*.glb)|*.glb", "3D model (*.glb)|*.glb"),
             DefaultExt = ".glb",
             // Sonuna tarih-saat (kullanıcı 2026-10-09: "dosyalar üst üste yazılıyor") — her aktarım ayrı dosya.
@@ -49,7 +49,7 @@ static class WebExport
     {
         var w = new Window
         {
-            Title = Product.Name + " — " + L.T("Web'e aktar: modeller", "Export to web: models"), Icon = Icons.Globe(32),
+            Title = Product.Name + " — " + L.T("GLB'ye aktar: modeller", "Export GLB: models"), Icon = Icons.Globe(32),
             SizeToContent = SizeToContent.WidthAndHeight, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false,
             WindowStartupLocation = ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
         };
@@ -104,14 +104,17 @@ static class WebExport
     public static Task Write(SceneData s, string path, Func<int, bool>? include = null, double[]? boxMin = null, double[]? boxMax = null) =>
         Task.Run(() => GlbWriter.Write(s, path, include, boxMin, boxMax));
 
-    /// <summary>Kaydedildi: dosya tarayıcıda kendiliğinden açılır (yerel sunucu); pencerede yol, boyut, süre, yeniden aç /
-    /// klasörü aç.</summary>
+    /// <summary>Kaydedildi: pencerede yol, boyut, süre, tarayıcıda aç / klasörü aç. Site sürümünde dosya tarayıcıda
+    /// kendiliğinden açılır (yerel sunucu); mağaza sürümünde yalnız kullanıcı "Tarayıcıda görüntüle"ye basınca (2026-10-30:
+    /// mağazada özellik standart GLB dışa aktarımı, web görüntüleyici isteğe bağlı ek).</summary>
     public static void ShowSaved(Window? owner, IntPtr ownerHwnd, string path, int elements, double seconds = -1)
     {
+#if !STORE
         LocalServer.OpenInBrowser(path);
+#endif
         var w = new Window
         {
-            Title = L.T("Web'e aktarıldı", "Exported to web"), Icon = Icons.Globe(32), SizeToContent = SizeToContent.WidthAndHeight,
+            Title = L.T("GLB'ye aktarıldı", "Exported to GLB"), Icon = Icons.Globe(32), SizeToContent = SizeToContent.WidthAndHeight,
             ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false,
             WindowStartupLocation = owner != null || ownerHwnd != IntPtr.Zero ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
         };
@@ -128,8 +131,13 @@ static class WebExport
         string took = seconds >= 0 ? L.T($" · {seconds:0} sn", $" · {seconds:0} s") : "";
         Line(L.T($"{elements:N0} eleman kaydedildi ({mb:0.0} MB){took}.", $"{elements:N0} elements saved ({mb:0.0} MB){took}."), bold: true);
         Line(path);
+#if STORE
+        Line(L.T("Dosya bilgisayarınızda kalır. Herhangi bir glTF / GLB görüntüleyicide açabilir ya da \"Tarayıcıda görüntüle\" ile Smart3DView Web'de görebilirsiniz.",
+                 "The file stays on your computer. Open it in any glTF / GLB viewer, or click \"View in browser\" to see it in Smart3DView Web."));
+#else
         Line(L.T("Tarayıcıda açıldı. Dosya bilgisayarınızda kalır; Revit açık olduğu sürece sayfayı yenileyince yeniden gelir. Daha sonra açmak için görüntüleyicide \"Modellerim klasörü\" ile bu klasörü bir kez seçin.",
                  "Opened in the browser. The file stays on your computer; while Revit is open, reloading the page brings it back. To open it later, pick this folder once with \"My models folder\" in the viewer."));
+#endif
         var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
         Button B(string t, Action a)
         {
@@ -137,7 +145,11 @@ static class WebExport
             b.Click += (_, _) => { try { a(); } catch { } };
             return b;
         }
+#if STORE
+        var open = B(L.T("Tarayıcıda görüntüle", "View in browser"), () => LocalServer.OpenInBrowser(path));
+#else
         var open = B(L.T("Tarayıcıda yeniden aç", "Open in browser again"), () => LocalServer.OpenInBrowser(path));
+#endif
         row.Children.Add(open);
         row.Children.Add(B(L.T("Klasörü aç", "Open folder"), () => Process.Start("explorer.exe", $"/select,\"{path}\"")));
         var ok = B(L.T("Kapat", "Close"), () => w.Close());
@@ -150,7 +162,7 @@ static class WebExport
     }
 }
 
-/// <summary>Web'e aktarım ilerlemesi: yüzde, okunan model, İptal / Esc (aktarıcı her elemanda iptale bakar).</summary>
+/// <summary>GLB'ye aktarım ilerlemesi: yüzde, okunan model, İptal / Esc (aktarıcı her elemanda iptale bakar).</summary>
 sealed class ExportProgressWindow : Window
 {
     readonly TextBlock _text = new() { Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
@@ -162,7 +174,7 @@ sealed class ExportProgressWindow : Window
     public ExportProgressWindow(IntPtr ownerHwnd, ReadControl ctl)
     {
         _ctl = ctl;
-        Title = Product.Name + " — " + L.T("Web'e aktar", "Export to web");
+        Title = Product.Name + " — " + L.T("GLB'ye aktar", "Export GLB");
         Icon = Icons.Globe(32);
         SizeToContent = SizeToContent.WidthAndHeight;
         ResizeMode = ResizeMode.NoResize;

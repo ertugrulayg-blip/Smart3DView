@@ -27,20 +27,19 @@ public class App : IExternalApplication
         // F1: Revit, düğmenin üzerindeyken çevrimiçi hızlı başlangıç sayfasını açar (Autodesk yönergesi: contextual help).
         button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
         panel.AddItem(button);
-#if !STORE   // Autodesk mağaza paketinde yok (açıklamada yer almıyor)
-        // Tüm model → Smart3DView Web (.glb, bilgisayarda kalır). Seçilen bağlı modellerle, dilim dilim.
-        var web = new PushButtonData("Smart3DViewWeb", L.T("Web'e\naktar", "Export\nto web"), dll, typeof(WebExportCommand).FullName)
+        // Tüm model → .glb (standart glTF; bilgisayarda kalır, Smart3DView Web ya da herhangi bir glTF görüntüleyicide açılır).
+        // Seçilen bağlı modellerle, dilim dilim. 2026-10-30: "Web'e aktar" adı "GLB'ye aktar" oldu, mağaza paketine de girdi.
+        var web = new PushButtonData("Smart3DViewWeb", L.T("GLB'ye\naktar", "Export\nGLB"), dll, typeof(WebExportCommand).FullName)
         {
             ToolTip = L.T(
-                "Tüm modeli (seçtiğiniz bağlı modellerle) tek bir .glb dosyasına aktarır; Smart3DView Web ile tarayıcıda açılır. Dosya bilgisayarınızda kalır. Okuma sırasında Revit kullanılabilir, Esc ile iptal edilir.",
-                "Exports the whole model (with the linked models you choose) to a single .glb file to open in the browser with Smart3DView Web. The file stays on your computer. Revit stays usable while reading; Esc cancels.")
+                "Tüm modeli (seçtiğiniz bağlı modellerle) standart 3B formatta tek bir .glb (glTF) dosyasına aktarır. Dosya bilgisayarınızda kalır; herhangi bir glTF görüntüleyicide ya da tarayıcıda Smart3DView Web ile açılır. Okuma sırasında Revit kullanılabilir, Esc ile iptal edilir.",
+                "Exports the whole model (with the linked models you choose) to a single .glb (glTF) file, a standard 3D format. The file stays on your computer; open it in any glTF viewer or in the browser with Smart3DView Web. Revit stays usable while reading; Esc cancels.")
                 + "\n\n" + L.T("Sürüm: ", "Version: ") + AddinVersion.Text,
             LargeImage = Icons.Globe(32),
             Image = Icons.Globe(16),
         };
         web.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, Help.OnlineWithLang));
         panel.AddItem(web);
-#endif
         RevitBridge.Event = ExternalEvent.Create(new RevitBridge());
         // Model değişince açık pencere "Yenile" düğmesini uyarır. Kendi işlemlerimiz (Görüntü al → ImageView) sayılmaz.
         app.ControlledApplication.DocumentChanged += (_, e) =>
@@ -88,7 +87,7 @@ static class Icons
         return bmp;
     }
 
-    /// <summary>Küre (enlem/boylam çizgileri) — "Web'e aktar".</summary>
+    /// <summary>Küre (enlem/boylam çizgileri) — "GLB'ye aktar".</summary>
     public static ImageSource Globe(int px)
     {
         var visual = new DrawingVisual();

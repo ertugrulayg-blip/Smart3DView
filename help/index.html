@@ -52,7 +52,7 @@
 <main data-l="en">
   <div class="toc">
     <a href="#en-start">Quick start</a><a href="#en-open">Choosing what to open</a><a href="#en-nav">Navigating</a>
-    <a href="#en-tones">Tones, Colored &amp; Detailed modes</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><!--web--><a href="#en-web">Export to web</a><!--/web--><a href="#en-panel">Models, tags &amp; view cube</a>
+    <a href="#en-tones">Tones, Colored &amp; Detailed modes</a><a href="#en-box">Editing the section box</a><a href="#en-clash">Clash detection</a><a href="#en-measure">Measure</a><!--web--><a href="#en-web">Export GLB</a><!--/web--><a href="#en-panel">Models, tags &amp; view cube</a>
     <a href="#en-pic">Take picture</a><a href="#en-keys">Keyboard shortcuts</a><a href="#en-lic">Trial &amp; license</a>
     <a href="#en-faq">Troubleshooting</a><a href="#en-req">Requirements &amp; privacy</a>
   </div>
@@ -103,27 +103,27 @@
   <h2 id="en-clash">Clash detection</h2>
   <p>Click <b>Clash</b> (<kbd>C</kbd>). Elements that overlap an element of a <b>different service</b> turn red and blue (the two sides of the clash), everything else fades. Click a clashing element to see what it clashes with.</p>
   <p><b>Tolerance:</b> the <b>Tolerance:</b> button next to Clash sets how deep two elements must overlap to count — <b>5 mm</b> by default, click for 10, 25, 50 mm or <b>touch</b> (touching counts too). With a tolerance, equipment resting on a floor, a panel mounted on a wall or a tray touching a beam is not reported.</p>
-  <p>Services checked against each other: cooling pipes, heating pipes, fire protection, domestic water, drainage, other pipes, supply ducts, return/exhaust ducts, other ducts, cable trays &amp; conduits, electrical devices, mechanical equipment, structural beams and columns, architecture (walls, floors, roofs, ceilings, stairs — not checked against each other).</p><!--web--><p>For detailed clash grouping and a report, use <b>Export to web</b> and open the file in Smart3DView Web.</p><!--/web-->
+  <p>Services checked against each other: cooling pipes, heating pipes, fire protection, domestic water, drainage, other pipes, supply ducts, return/exhaust ducts, other ducts, cable trays &amp; conduits, electrical devices, mechanical equipment, structural beams and columns, architecture (walls, floors, roofs, ceilings, stairs — not checked against each other).</p><!--web--><p>For detailed clash grouping and a report, use <b>Export GLB</b> and open the file in Smart3DView Web.</p><!--/web-->
   <p><b>Not</b> reported: parts of the same run (a pipe and its own elbow or coupling), elements connected to each other through connectors (e.g. an air handler and its duct), and a pipe or duct with its own insulation. Elements running completely inside another (a pipe inside a duct) are reported. Only the area inside the current box is checked; editing the box re-runs the check.</p>
 
   <h2 id="en-pic">Take picture</h2>
   <p>Click <b>Take picture</b> (<kbd>P</kbd>). Smart3DView renders the current view at about 4K without handles and saves it into your model as an image view: <b>Project Browser → Renderings → “Smart3DView - date time”</b>. You can place it on sheets like any rendering. A copy of the PNG is kept in <code>%LOCALAPPDATA%\Smart3DView\images</code>. When it is saved, a small window shows the picture, where it went in Revit and buttons to open the PNG or its folder.</p>
 
   <!--web-->
-  <h2 id="en-web">Export to web</h2>
-  <p>Open models in the browser with <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> — no install, Revit not needed. The <b>.glb</b> file stays on your computer; the browser opens it locally and never uploads it.</p>
+  <h2 id="en-web">Export GLB</h2>
+  <p>Saves the model as a <b>.glb</b> (glTF) file, a standard 3D format that opens in any glTF viewer. You can also open it in the browser with <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> — no install, Revit not needed. The file stays on your computer; the browser opens it locally and never uploads it.</p>
   <ul>
-    <li><b>Whole model</b>: the <b>Export to web</b> button on the Revit ribbon, next to Smart3DView. Pick the linked models to include (all are ticked) and where to save. The model is exported with Revit's own exporter (like Navisworks): the same family geometry is stored once, and linked models are cached, so a link that has not changed is not read again. Cancel or <kbd>Esc</kbd> stops it.</li>
-    <li><b>Just this view</b>: <b>🌐 Export to web</b> in the 3D window saves what is open in that window (models hidden in the list at the top left are left out).</li>
+    <li><b>Whole model</b>: the <b>Export GLB</b> button on the Revit ribbon, next to Smart3DView. Pick the linked models to include (all are ticked) and where to save. The model is exported with Revit's own exporter (like Navisworks): the same family geometry is stored once, and linked models are cached, so a link that has not changed is not read again. Cancel or <kbd>Esc</kbd> stops it.</li>
+    <li><b>Just this view</b>: <b>🌐 Export GLB</b> in the 3D window saves what is open in that window (models hidden in the list at the top left are left out).</li>
   </ul>
-  <p>When the export finishes, the model opens in your browser by itself (the add-in hands the file to the page from this computer — it is never uploaded). The first time, the browser asks whether the site may access devices on your local network: click <b>Allow</b>.</p>
+  <p>When the export finishes, the model opens in Smart3DView Web in your browser — in the Autodesk App Store version click <b>View in browser</b> in the window that appears (the add-in hands the file to the page from this computer — it is never uploaded). The first time, the browser asks whether the site may access devices on your local network: click <b>Allow</b>.</p>
   <p>Files are saved to <code>Documents\Smart3DView</code> by default. In the viewer, drag the file onto the page, or pick that folder once with <b>My models folder</b>.</p>
   <p><b>If the browser view stutters</b>, look at the right of its bottom bar: it shows which graphics card the browser uses. <i>Microsoft Basic Render Driver</i> or <i>SwiftShader</i> means graphics acceleration is off in the browser (turn on “Use graphics acceleration when available”; on company computers this is often locked in Edge only, so the add-in then opens the model in Chrome if it is installed). <i>Intel UHD / Iris</i> on a laptop with an NVIDIA / AMD card means the browser runs on the built-in chip: Windows Settings → System → Display → Graphics → the browser → High performance, then reopen the browser. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Step-by-step setup</a></p>
 
   <!--/web-->
   <h2 id="en-panel">Models, Show in Revit, tags and view cube</h2>
   <ul>
-    <li><b>Hide an element:</b> right-click it → <b>Hide</b> (or select it and press <kbd>H</kbd>); a pipe or duct is hidden together with its insulation. Right-click → <b>Hide similar</b> (<kbd>Ctrl</kbd>+<kbd>H</kbd>) hides every element of the same category, in all models. Right-click → <b>Show all</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) brings everything back. <kbd>Ctrl</kbd>+<kbd>Z</kbd> (or <b>↶ Undo</b> under the view cube) undoes the last hide / show all. Hidden elements are left out of clash detection<!--web--> and Export to web<!--/web-->; They stay hidden after Reload.</li>
+    <li><b>Hide an element:</b> right-click it → <b>Hide</b> (or select it and press <kbd>H</kbd>); a pipe or duct is hidden together with its insulation. Right-click → <b>Hide similar</b> (<kbd>Ctrl</kbd>+<kbd>H</kbd>) hides every element of the same category, in all models. Right-click → <b>Show all</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) brings everything back. <kbd>Ctrl</kbd>+<kbd>Z</kbd> (or <b>↶ Undo</b> under the view cube) undoes the last hide / show all. Hidden elements are left out of clash detection<!--web--> and Export GLB<!--/web-->; They stay hidden after Reload.</li>
     <li><b>Models</b> (top left): the host file and every linked model are listed with their element counts. Click a name to hide or show that whole model; hidden models are left out of clash detection.</li>
     <li><b>Show in Revit</b>: select an element and click this button to select it and zoom to it in Revit (host model elements).</li>
     <li><b>Tag</b> (<kbd>T</kbd>): hover over an element to see its category and type next to the cursor.</li>
@@ -191,7 +191,7 @@
 <main data-l="tr">
   <div class="toc">
     <a href="#tr-start">Hızlı başlangıç</a><a href="#tr-open">Neyin açılacağını seçmek</a><a href="#tr-nav">Gezinme</a>
-    <a href="#tr-tones">Tonlar, Renkli ve Detaylı mod</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><!--web--><a href="#tr-web">Web'e aktar</a><!--/web--><a href="#tr-panel">Modeller, etiket ve küp</a>
+    <a href="#tr-tones">Tonlar, Renkli ve Detaylı mod</a><a href="#tr-box">Kesit kutusunu düzenleme</a><a href="#tr-clash">Çakışma denetimi</a><a href="#tr-measure">Ölç</a><!--web--><a href="#tr-web">GLB'ye aktar</a><!--/web--><a href="#tr-panel">Modeller, etiket ve küp</a>
     <a href="#tr-pic">Görüntü al</a><a href="#tr-keys">Klavye kısayolları</a><a href="#tr-lic">Deneme ve lisans</a>
     <a href="#tr-faq">Sorun giderme</a><a href="#tr-req">Gereksinimler ve gizlilik</a>
   </div>
@@ -242,27 +242,27 @@
   <h2 id="tr-clash">Çakışma denetimi</h2>
   <p><b>Çakışma</b>'ya tıklayın (<kbd>C</kbd>). <b>Farklı bir tesisattaki</b> elemanla çakışan elemanlar kırmızı ve mavi olur (çakışmanın iki tarafı), diğerleri soluklaşır. Çakışan bir elemana tıklayınca neyle çakıştığı yazar.</p>
   <p><b>Tolerans:</b> Çakışma düğmesinin yanındaki düğme, iki elemanın çakışma sayılması için birbirinin içine ne kadar girmesi gerektiğini belirler — varsayılan <b>5 mm</b>; tıklayınca 10, 25, 50 mm ya da <b>dokunma</b> (değmek de sayılır). Toleransla döşemeye oturan cihaz, duvara monte pano ya da kirişe değen tava çakışma sayılmaz.</p>
-  <p>Birbirine karşı denetlenen gruplar: soğutma boruları, ısıtma boruları, yangın, temiz su, pis su, diğer borular, üfleme kanalları, emiş/dönüş kanalları, diğer kanallar, kablo tavaları ve conduit'ler, elektrik elemanları, mekanik ekipman, taşıyıcı kiriş ve kolonlar, mimari (duvar, döşeme, çatı, tavan, merdiven — kendi aralarında denetlenmez).</p><!--web--><p>Ayrıntılı çakışma gruplandırması ve raporu için <b>Web'e aktar</b>'ı kullanıp dosyayı Smart3DView Web'de açın.</p><!--/web-->
+  <p>Birbirine karşı denetlenen gruplar: soğutma boruları, ısıtma boruları, yangın, temiz su, pis su, diğer borular, üfleme kanalları, emiş/dönüş kanalları, diğer kanallar, kablo tavaları ve conduit'ler, elektrik elemanları, mekanik ekipman, taşıyıcı kiriş ve kolonlar, mimari (duvar, döşeme, çatı, tavan, merdiven — kendi aralarında denetlenmez).</p><!--web--><p>Ayrıntılı çakışma gruplandırması ve raporu için <b>GLB'ye aktar</b>'ı kullanıp dosyayı Smart3DView Web'de açın.</p><!--/web-->
   <p>Çakışma <b>sayılmayanlar</b>: aynı hattın parçaları (boru ile kendi dirseği ya da kaplini), connector ile birbirine bağlı elemanlar (ör. klima santrali ve kanalı), bir boru/kanal ile kendi izolasyonu. Tamamen başka bir elemanın içinden geçenler (kanal içindeki boru) çakışma sayılır. Yalnız geçerli kutunun içi denetlenir; kutuyu düzenlemek denetimi yeniler.</p>
 
   <h2 id="tr-pic">Görüntü al</h2>
   <p><b>Görüntü al</b>'a tıklayın (<kbd>P</kbd>). Smart3DView görüntüyü tutamaçlar olmadan yaklaşık 4K çözünürlükte çizer ve modelinize görüntü görünümü olarak kaydeder: <b>Proje Tarayıcısı → Renderings → “Smart3DView - tarih saat”</b>. Herhangi bir render gibi paftalara yerleştirilebilir. PNG'nin bir kopyası <code>%LOCALAPPDATA%\Smart3DView\images</code> klasöründe kalır. Kaydedilince küçük bir pencere görüntüyü, Revit'te nereye kaydedildiğini ve PNG'yi ya da klasörünü açan düğmeleri gösterir.</p>
 
   <!--web-->
-  <h2 id="tr-web">Web'e aktar</h2>
-  <p>Modelleri <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> ile tarayıcıda açın — kurulum yok, Revit gerekmez. <b>.glb</b> dosyası bilgisayarınızda kalır; tarayıcı dosyayı yerelde açar, hiçbir yere yüklemez.</p>
+  <h2 id="tr-web">GLB'ye aktar</h2>
+  <p>Modeli standart 3B formatta, herhangi bir glTF görüntüleyicide açılan bir <b>.glb</b> (glTF) dosyası olarak kaydeder. Dosyayı <a href="https://ertugrulayg-blip.github.io/smart3dview-web/">Smart3DView Web</a> ile tarayıcıda da açabilirsiniz — kurulum yok, Revit gerekmez. Dosya bilgisayarınızda kalır; tarayıcı dosyayı yerelde açar, hiçbir yere yüklemez.</p>
   <ul>
-    <li><b>Tüm model</b>: Revit şeridinde Smart3DView'in yanındaki <b>Web'e aktar</b> düğmesi. Dahil edilecek bağlı modelleri (hepsi işaretli gelir) ve kayıt yerini seçin. Model Revit'in kendi aktarıcısıyla aktarılır (Navisworks gibi): aynı aile geometrisi bir kez saklanır, bağlı modeller önbelleğe alınır — değişmeyen link yeniden okunmaz. İptal ya da <kbd>Esc</kbd> durdurur.</li>
-    <li><b>Yalnız bu görünüm</b>: 3B penceredeki <b>🌐 Web'e aktar</b>, o pencerede açık olanı kaydeder (sol üstteki listede gizlenen modeller dahil edilmez).</li>
+    <li><b>Tüm model</b>: Revit şeridinde Smart3DView'in yanındaki <b>GLB'ye aktar</b> düğmesi. Dahil edilecek bağlı modelleri (hepsi işaretli gelir) ve kayıt yerini seçin. Model Revit'in kendi aktarıcısıyla aktarılır (Navisworks gibi): aynı aile geometrisi bir kez saklanır, bağlı modeller önbelleğe alınır — değişmeyen link yeniden okunmaz. İptal ya da <kbd>Esc</kbd> durdurur.</li>
+    <li><b>Yalnız bu görünüm</b>: 3B penceredeki <b>🌐 GLB'ye aktar</b>, o pencerede açık olanı kaydeder (sol üstteki listede gizlenen modeller dahil edilmez).</li>
   </ul>
-  <p>Aktarım bitince model tarayıcıda kendiliğinden açılır (eklenti dosyayı sayfaya bu bilgisayardan verir — hiçbir yere yüklenmez). İlk seferde tarayıcı, sitenin yerel ağdaki cihazlara erişmesine izin verilip verilmeyeceğini sorar: <b>İzin ver</b>'e tıklayın.</p>
+  <p>Aktarım bitince model tarayıcıda Smart3DView Web ile açılır — Autodesk App Store sürümünde açılan penceredeki <b>Tarayıcıda görüntüle</b>'ye tıklayın (eklenti dosyayı sayfaya bu bilgisayardan verir — hiçbir yere yüklenmez). İlk seferde tarayıcı, sitenin yerel ağdaki cihazlara erişmesine izin verilip verilmeyeceğini sorar: <b>İzin ver</b>'e tıklayın.</p>
   <p>Dosyalar varsayılan olarak <code>Belgeler\Smart3DView</code> klasörüne kaydedilir. Görüntüleyicide dosyayı sayfaya sürükleyin ya da bu klasörü <b>Modellerim klasörü</b> ile bir kez seçin.</p>
   <p><b>Tarayıcıdaki görüntü kasıyorsa</b> alt çubuğun sağına bakın: tarayıcının hangi ekran kartını kullandığı yazar. <i>Microsoft Basic Render Driver</i> ya da <i>SwiftShader</i> → tarayıcıda grafik hızlandırma kapalı (“Kullanılabilir olduğunda grafik hızlandırmayı kullan”ı açın; şirket bilgisayarlarında bu çoğu zaman yalnız Edge'de kilitlidir, eklenti o zaman modeli yüklüyse Chrome'da açar). Dizüstünde NVIDIA / AMD kart varken <i>Intel UHD / Iris</i> → tarayıcı dahili kartta çalışıyor: Windows Ayarlar → Sistem → Ekran → Grafikler → tarayıcı → Yüksek performans, sonra tarayıcıyı yeniden açın. <a href="https://ertugrulayg-blip.github.io/smart3dview-web/#gpu">Adım adım ayar</a></p>
 
   <!--/web-->
   <h2 id="tr-panel">Modeller, Revit'te göster, etiket ve görünüm küpü</h2>
   <ul>
-    <li><b>Eleman gizleme:</b> elemana sağ tıklayın → <b>Gizle</b> (ya da seçip <kbd>H</kbd>); boru/kanal izolasyonuyla birlikte gizlenir. Sağ tık → <b>Benzerlerini gizle</b> (<kbd>Ctrl</kbd>+<kbd>H</kbd>) aynı kategorideki tüm elemanları (bütün modellerde) gizler. Sağ tık → <b>Tümünü göster</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) hepsini geri getirir. <kbd>Ctrl</kbd>+<kbd>Z</kbd> (ya da küpün altındaki <b>↶ Geri al</b>) son gizlemeyi / tümünü göstermeyi geri alır. Gizlenenler çakışma denetimine<!--web--> ve Web'e aktara<!--/web--> girmez; Yenile sonrasında da gizli kalırlar.</li>
+    <li><b>Eleman gizleme:</b> elemana sağ tıklayın → <b>Gizle</b> (ya da seçip <kbd>H</kbd>); boru/kanal izolasyonuyla birlikte gizlenir. Sağ tık → <b>Benzerlerini gizle</b> (<kbd>Ctrl</kbd>+<kbd>H</kbd>) aynı kategorideki tüm elemanları (bütün modellerde) gizler. Sağ tık → <b>Tümünü göster</b> (<kbd>Shift</kbd>+<kbd>H</kbd>) hepsini geri getirir. <kbd>Ctrl</kbd>+<kbd>Z</kbd> (ya da küpün altındaki <b>↶ Geri al</b>) son gizlemeyi / tümünü göstermeyi geri alır. Gizlenenler çakışma denetimine<!--web--> ve GLB aktarımına<!--/web--> girmez; Yenile sonrasında da gizli kalırlar.</li>
     <li><b>Modeller</b> (sol üst): ana dosya ve her bağlı model eleman sayısıyla listelenir. Bir ada tıklayınca o modelin tamamı gizlenir ya da gösterilir; gizli modeller çakışma denetimine girmez.</li>
     <li><b>Revit'te göster</b>: bir elemanı seçip bu düğmeye tıklayın; eleman Revit'te seçilir ve gösterilir (ana modeldeki elemanlar).</li>
     <li><b>Etiket</b> (<kbd>T</kbd>): imleci bir elemanın üstünde gezdirin; kategori ve tipi imlecin yanında yazar.</li>

@@ -13,8 +13,8 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <RevitDir Condition="'$(RevitDir)' == ''">C:\Program Files\Autodesk\Revit 2026</RevitDir>
     <!-- Her güncellemede artırılır; pencere başlığında ve düğme ipucunda görünür. -->
-    <Version>1.24.2</Version>
-    <!-- Autodesk mağaza paketi (make-bundle.ps1, -p:Store=true): "Web'e aktar" yok — mağaza açıklamasında yer almıyor. -->
+    <Version>1.25.0</Version>
+    <!-- Autodesk mağaza paketi (make-bundle.ps1, -p:Store=true): GLB aktarımı sonrası tarayıcı kendiliğinden açılmaz, çakışma ipucu yok. -->
     <DefineConstants Condition="'$(Store)' == 'true'">$(DefineConstants);STORE</DefineConstants>
   </PropertyGroup>
 

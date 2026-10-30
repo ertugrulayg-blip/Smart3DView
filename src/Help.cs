@@ -23,7 +23,7 @@ static class Help
     }
 
     /// <summary>Penceremizde F1 bizim yardımımızı açar. Karşılanmayan F1, Windows'ta WM_HELP olarak sahip pencereye (Revit)
-    /// gider ve Revit kendi yardımını açar (2026-10-30: "Web'e aktar" penceresinde görüldü).</summary>
+    /// gider ve Revit kendi yardımını açar (2026-10-30: "GLB'ye aktar" penceresinde görüldü).</summary>
     public static void Attach(System.Windows.Window w)
     {
         w.PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.F1) { Open(); e.Handled = true; } };

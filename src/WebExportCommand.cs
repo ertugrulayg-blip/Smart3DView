@@ -9,7 +9,7 @@ using Autodesk.Revit.UI;
 
 namespace Smart3DView;
 
-/// <summary>Şerit düğmesi "Web'e aktar" (kullanıcı isteği 2026-10-08): tüm model + seçilen bağlı modeller, görünümden
+/// <summary>Şerit düğmesi "GLB'ye aktar" (kullanıcı isteği 2026-10-08): tüm model + seçilen bağlı modeller, görünümden
 /// bağımsız, tek .glb dosyasına. Okuma dilim dilim (Revit kullanılmaya devam eder), ilerleme penceresinde İptal / Esc.
 /// Komut hemen döner; asıl iş RevitBridge sırasında yürür.</summary>
 [Transaction(TransactionMode.Manual)]   // ana modelin düz tavaları için geçici Fine görünüm açılıp geri alınır
@@ -35,7 +35,7 @@ public class WebExportCommand : IExternalCommand
         }
         if (!License.FullFeatures)
         {
-            var lw = new LicenseWindow(null, L.T("\"Web'e aktar\" tam lisans gerektirir (deneme süresi bitti).", "\"Export to web\" needs a full license (the trial has ended)."));
+            var lw = new LicenseWindow(null, L.T("\"GLB'ye aktar\" tam lisans gerektirir (deneme süresi bitti).", "\"Export GLB\" needs a full license (the trial has ended)."));
             new WindowInteropHelper(lw).Owner = hwnd;
             lw.ShowDialog();
             if (!License.FullFeatures) return Result.Cancelled;
