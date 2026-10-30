@@ -34,6 +34,7 @@ public class App : IExternalApplication
             ToolTip = L.T(
                 "Tüm modeli (seçtiğiniz bağlı modellerle) standart 3B formatta tek bir .glb (glTF) dosyasına aktarır. Dosya bilgisayarınızda kalır; herhangi bir glTF görüntüleyicide ya da tarayıcıda Smart3DView Web ile açılır. Okuma sırasında Revit kullanılabilir, Esc ile iptal edilir.",
                 "Exports the whole model (with the linked models you choose) to a single .glb (glTF) file, a standard 3D format. The file stays on your computer; open it in any glTF viewer or in the browser with Smart3DView Web. Revit stays usable while reading; Esc cancels.")
+                + "\n\n" + WebExport.RegionTipText
                 + "\n\n" + L.T("Sürüm: ", "Version: ") + AddinVersion.Text,
             LargeImage = Icons.Globe(32),
             Image = Icons.Globe(16),

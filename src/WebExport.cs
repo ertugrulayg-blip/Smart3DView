@@ -43,6 +43,21 @@ static class WebExport
         return dlg.ShowDialog(owner) == true ? dlg.FileName : null;
     }
 
+    /// <summary>Şerit düğmesi tüm modeli aktarır; belirli bir bölge için Smart3DView kutusu (kullanıcı isteği 2026-10-30:
+    /// ipucunda, model seçiminde ve aktarım sürerken görünsün).</summary>
+    public static string RegionTipText => L.T(
+        "Belirli bir bölgeyi aktarmak için: Smart3DView ile alanı açın (gerekirse kutuyu düzenleyin), 3B penceredeki 🌐 GLB'ye aktar düğmesine basın.",
+        "To export a specific area: open it with Smart3DView (adjust the box if needed), then click 🌐 Export GLB in the 3D window.");
+
+    public static Border RegionTip() => new()
+    {
+        Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEA, 0xF2, 0xFD)),
+        BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xB9, 0xD3, 0xF5)),
+        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+        Padding = new Thickness(8, 5, 8, 5), Margin = new Thickness(0, 10, 0, 0),
+        Child = new TextBlock { Text = "ⓘ  " + RegionTipText, TextWrapping = TextWrapping.Wrap, MaxWidth = 440 },
+    };
+
     /// <summary>Tüm model aktarımında hangi modellerin dahil edileceği: ana model + bağlı modeller, hepsi işaretli gelir
     /// (kullanıcı isteği 2026-10-08: "hangilerine gerek olmadığını seçebileyim"). Vazgeçilirse null.</summary>
     public static System.Collections.Generic.List<string>? AskModels(IntPtr ownerHwnd, string host, System.Collections.Generic.IList<string> links)
@@ -75,6 +90,7 @@ static class WebExport
         if (links.Count == 0)
             stack.Children.Add(new TextBlock { Text = L.T("Bu modelde yüklü bağlı model yok.", "This model has no loaded links."), Opacity = 0.6, Margin = new Thickness(0, 4, 0, 0) });
 
+        stack.Children.Add(RegionTip());
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
         Button B(string t, RoutedEventHandler h)
         {
@@ -189,6 +205,7 @@ sealed class ExportProgressWindow : Window
         stack.Children.Add(_bar);
         stack.Children.Add(_model);
         stack.Children.Add(_slow);
+        stack.Children.Add(WebExport.RegionTip());
         stack.Children.Add(cancel);
         Content = stack;
         SetText(L.T("Model hazırlanıyor…", "Preparing the model…"));
